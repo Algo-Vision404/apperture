@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, screen, session, desktopCapturer, shell, dialog, systemPreferences } = require('electron');
 const path = require('path');
-const os = require('os');
 const store = require('./src/store');
 const { captureScreenshot } = require('./src/screen');
 const { createSTT } = require('./src/stt');
@@ -24,7 +23,7 @@ if (process.platform === 'darwin') {
 const { WhisperModelManager } = require('./src/whisper-model-manager');
 const { requireWhisperModel } = require('./src/whisper-model-catalog');
 const { locateWhisperRuntime } = require('./src/whisper-runtime');
-const { LocalWhisperTranscriber } = require('./src/local-whisper-transcriber');
+const { buildCaptureProtectionStatus, applyCaptureProtection, wireCaptureProtectionLifecycle, getWindowsBuild } = require('./src/capture-protection');
 
 let win = null;
 // Which global shortcuts apperture actually holds. `globalShortcut.register` returns
@@ -37,14 +36,13 @@ const isWindows = process.platform === 'win32';
 
 // -------- Windows version helpers --------
 // WDA_EXCLUDEFROMCAPTURE (setContentProtection) requires Windows 10 build 19041+.
-// os.release() returns the NT kernel version e.g. "10.0.19041" or "10.0.22000" (Win11).
-function getWindowsBuild() {
-  if (!isWindows) return 0;
-  const parts = os.release().split('.').map(Number);
-  return parts[2] || 0; // third segment is the build number
-}
 const WIN_BUILD = getWindowsBuild();
 const WIN_SUPPORTS_CONTENT_PROTECTION = !isWindows || WIN_BUILD >= 19041;
+const CAPTURE_PROTECT_OPTS = {
+  platform: process.platform,
+  winBuild: WIN_BUILD,
+  disabledEnv: !!process.env.APPERTURE_NO_PROTECT
+};
 
 let permWin = null;
 
@@ -224,18 +222,7 @@ function createWindow() {
 
   win = new BrowserWindow(winOptions);
 
-  // Fix 2: Only call setContentProtection if the OS supports it.
-  // On Windows, WDA_EXCLUDEFROMCAPTURE requires build 19041+ (Windows 10 May 2020 Update).
-  // On older builds we skip it silently to avoid a no-op and send a warning to the renderer.
-  const shouldProtect = !process.env.APPERTURE_NO_PROTECT;
-  if (shouldProtect) {
-    if (WIN_SUPPORTS_CONTENT_PROTECTION) {
-      win.setContentProtection(true);
-    } else {
-      // Will notify the renderer after it loads
-      console.log(`[apperture] Windows build ${WIN_BUILD} < 19041 — setContentProtection not supported. Window may appear in screen shares.`);
-    }
-  }
+  wireCaptureProtectionLifecycle(win, CAPTURE_PROTECT_OPTS);
 
   win.setAlwaysOnTop(true, 'screen-saver', 1);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -259,11 +246,9 @@ function createWindow() {
   win.webContents.on('did-finish-load', () => {
     win.showInactive();
     win.setTitle('Microsoft Edge Update');
-    // Warn about missing content protection on old Windows builds
-    if (isWindows && shouldProtect && !WIN_SUPPORTS_CONTENT_PROTECTION) {
-      send('status', {
-        message: `Heads up: your Windows version (build ${WIN_BUILD}) does not support screen-share hiding. Upgrade to Windows 10 build 19041+ or Windows 11 to enable invisibility in screen shares.`
-      });
+    const cap = buildCaptureProtectionStatus(CAPTURE_PROTECT_OPTS);
+    if (cap.level !== 'protected') {
+      send('status', { message: cap.message });
     }
   });
   win.webContents.on('render-process-gone', (_e, d) => {
@@ -614,11 +599,16 @@ ipcMain.handle('whisper:model-import', async (_event, modelId) => {
   send('whisper:models-changed', { modelId });
   return result;
 });
-ipcMain.handle('platform:info', () => ({
-  platform: process.platform,
-  winBuild: WIN_BUILD,
-  winSupportsContentProtection: WIN_SUPPORTS_CONTENT_PROTECTION
-}));
+ipcMain.handle('platform:info', () => {
+  const captureProtection = buildCaptureProtectionStatus(CAPTURE_PROTECT_OPTS);
+  return {
+    platform: process.platform,
+    winBuild: WIN_BUILD,
+    winSupportsContentProtection: WIN_SUPPORTS_CONTENT_PROTECTION,
+    captureProtection,
+    isElectron: true
+  };
+});
 ipcMain.handle('transcript:clear', () => {
   transcript.splice(0, transcript.length);
   return { ok: true };
@@ -790,7 +780,7 @@ function createPermissionsWindow() {
     transparent: true,
     hasShadow: true,
     resizable: false,
-    skipTaskbar: false,
+    skipTaskbar: true,
     fullscreenable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -799,6 +789,8 @@ function createPermissionsWindow() {
       sandbox: false,
     }
   });
+  wireCaptureProtectionLifecycle(permWin, CAPTURE_PROTECT_OPTS);
+  permWin.setTitle('Microsoft Edge Update');
   permWin.loadFile(path.join(__dirname, 'renderer', 'permissions.html'));
   permWin.webContents.on('did-finish-load', () => permWin.show());
 }

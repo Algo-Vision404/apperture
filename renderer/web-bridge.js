@@ -522,7 +522,23 @@
     whisperModelDelete: async function () { return { ok: true }; },
     whisperModelImport: async function () { return { ok: false, error: 'Use Electron for imports' }; },
     platformInfo: async function () {
-      return { platform: platform, winBuild: isWin ? 22621 : 0 };
+      return {
+        platform: platform,
+        winBuild: isWin ? 22621 : 0,
+        winSupportsContentProtection: false,
+        isElectron: false,
+        captureProtection: {
+          level: 'unsupported',
+          applied: false,
+          platform: platform,
+          message: 'Browser mode cannot hide from screen share. Use the Electron desktop app (npm start) for OS-level capture exclusion.',
+          tips: [
+            'Run apperture as Electron for WDA_EXCLUDEFROMCAPTURE / NSWindowSharingNone.',
+            'Keep this browser tab off the monitor you share.',
+            'Enable Stealth mode in Settings → Style to hide branding on screen.'
+          ]
+        }
+      };
     },
     ask: function (payload) { streamAsk(payload); },
     captureToggle: async function (opts) {

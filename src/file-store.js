@@ -21,6 +21,8 @@ const DEFAULTS = {
     threads: 0
   },
   smart: false,
+  stealthMode: true,
+  stealthAutoCollapse: true,
   baseUrl: '',
   minimaxRegion: 'global_en',
   apiKeys: {

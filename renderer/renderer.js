@@ -662,13 +662,110 @@
   }
 
   // Hide / collapse
+  let stealthAutoCollapsed = false;
+  let panelWasExpandedBeforeStealth = true;
+
+  function syncStealthUi() {
+    const app = document.getElementById('app');
+    const on = settings && settings.stealthMode !== false;
+    if (app) app.classList.toggle('stealth-on', on);
+  }
+
+  function updateCaptureProtectionUi(info) {
+    const cap = info && info.captureProtection;
+    const pill = document.getElementById('stealth-level-pill');
+    const text = document.getElementById('stealth-status-text');
+    const tips = document.getElementById('stealth-tips');
+    const shield = document.getElementById('stealth-shield');
+    if (!cap) {
+      if (pill) {
+        pill.textContent = apperture.isWeb ? 'Web only' : 'Unknown';
+        pill.className = 'stealth-pill stealth-pill-unknown';
+      }
+      if (text) {
+        text.textContent = apperture.isWeb
+          ? 'The browser runner cannot hide from screen share. Use the Electron desktop app for capture exclusion.'
+          : 'Capture protection status unavailable.';
+      }
+      if (shield) {
+        shield.classList.remove('hidden', 'warn', 'off');
+        shield.classList.add('warn');
+        shield.title = 'Screen-share hiding unavailable in web mode';
+      }
+      return;
+    }
+    const labels = {
+      protected: 'Protected',
+      partial: 'Best effort',
+      unsupported: 'Unavailable',
+      off: 'Disabled'
+    };
+    if (pill) {
+      pill.textContent = labels[cap.level] || cap.level;
+      pill.className = 'stealth-pill stealth-pill-' + (cap.level || 'unknown');
+    }
+    if (text) text.textContent = cap.message || '';
+    if (tips) {
+      tips.innerHTML = '';
+      (cap.tips || []).forEach(function (tip) {
+        const li = document.createElement('li');
+        li.textContent = tip;
+        tips.appendChild(li);
+      });
+    }
+    if (shield) {
+      shield.classList.remove('hidden', 'warn', 'off');
+      if (cap.level === 'protected') {
+        shield.title = 'Hidden from most screen shares';
+      } else if (cap.level === 'partial') {
+        shield.classList.add('warn');
+        shield.title = 'Screen-share hiding is best-effort on this OS';
+      } else {
+        shield.classList.add('off');
+        shield.title = 'Screen-share hiding unavailable';
+      }
+    }
+  }
+
+  function setPanelCollapsed(collapsed, fromStealth) {
+    const panel = $('#panel');
+    if (!panel) return;
+    const isCollapsed = panel.classList.contains('collapsed');
+    if (collapsed === isCollapsed) return;
+    panel.classList.toggle('collapsed', collapsed);
+    $('#hide-btn').classList.toggle('collapsed', collapsed);
+    $('#panel-wrap').classList.toggle('panel-collapsed', collapsed);
+    $('#app').classList.toggle('panel-collapsed', collapsed);
+    $('#live-dot').style.display = collapsed ? 'none' : '';
+    const stt = $('#stt-status');
+    if (stt) stt.style.display = collapsed ? 'none' : '';
+    if (!collapsed && fromStealth) stealthAutoCollapsed = false;
+  }
+
+  function maybeStealthCollapse(active) {
+    if (!settings || settings.stealthMode === false || settings.stealthAutoCollapse === false) return;
+    if (active) {
+      const panel = $('#panel');
+      panelWasExpandedBeforeStealth = panel && !panel.classList.contains('collapsed');
+      if (panelWasExpandedBeforeStealth) {
+        setPanelCollapsed(true, true);
+        stealthAutoCollapsed = true;
+      }
+    } else if (stealthAutoCollapsed && panelWasExpandedBeforeStealth) {
+      setPanelCollapsed(false, true);
+      stealthAutoCollapsed = false;
+    }
+  }
+
   function toggleHide() {
     const collapsed = $('#panel').classList.toggle('collapsed');
     $('#hide-btn').classList.toggle('collapsed', collapsed);
     $('#panel-wrap').classList.toggle('panel-collapsed', collapsed);
+    $('#app').classList.toggle('panel-collapsed', collapsed);
     $('#live-dot').style.display = collapsed ? 'none' : '';
     const stt = $('#stt-status');
     if (stt) stt.style.display = collapsed ? 'none' : '';
+    if (!collapsed) stealthAutoCollapsed = false;
   }
   $('#hide-btn').addEventListener('click', toggleHide);
   apperture.on('hide:toggle', toggleHide);
@@ -1140,11 +1237,13 @@
     if (!active) {
       sidebarAutoOpened = false;
       setListenRail(false);
+      maybeStealthCollapse(false);
     } else {
       const provider = (mode === 'cloud-mic' && apperture.micMode === 'cloud-mic')
         ? 'cloud'
         : (mode === 'browser-speech' ? 'browser' : (mode || 'mic'));
       setListenRail(true, { provider: provider });
+      maybeStealthCollapse(true);
     }
     if (active) {
       if (shouldStartRendererMic(mode)) startMic();
@@ -1579,6 +1678,10 @@
     $('#why-leaving').value = settings.whyLeaving || '';
     $('#work-style').value = settings.workStyle || '';
     // Style tab
+    const stealthModeChk = document.getElementById('stealth-mode');
+    const stealthCollapseChk = document.getElementById('stealth-auto-collapse');
+    if (stealthModeChk) stealthModeChk.checked = settings.stealthMode !== false;
+    if (stealthCollapseChk) stealthCollapseChk.checked = settings.stealthAutoCollapse !== false;
     $('#ai-rules').value = settings.aiRules || '';
     updateAiRulesCounter();
     // Q&A tab
@@ -1981,6 +2084,10 @@
     settings.whyLeaving = $('#why-leaving').value.trim();
     settings.workStyle = $('#work-style').value.trim();
     // Style tab
+    const stealthModeChkSave = document.getElementById('stealth-mode');
+    const stealthCollapseChkSave = document.getElementById('stealth-auto-collapse');
+    if (stealthModeChkSave) settings.stealthMode = !!stealthModeChkSave.checked;
+    if (stealthCollapseChkSave) settings.stealthAutoCollapse = !!stealthCollapseChkSave.checked;
     settings.aiRules = $('#ai-rules').value.trim();
     // Q&A
     settings.salaryTarget = $('#salary-target').value.trim();
@@ -1990,6 +2097,7 @@
       $('#s-status').textContent = statusText();
       updatePrepStatus();
       updateSmartTooltip();
+      syncStealthUi();
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
@@ -2182,6 +2290,8 @@
       }
     }
     const platformInfo = await apperture.platformInfo();
+    updateCaptureProtectionUi(platformInfo);
+    syncStealthUi();
 
     // R4: shortcut hints
     const sayHintEl = document.getElementById('say-shortcut-hint');

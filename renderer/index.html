@@ -12,6 +12,7 @@
     <div id="toolbar" class="drag-handle">
       <button class="tb-logo" id="logo-btn" title="apperture — open guide" aria-label="apperture"></button>
       <span class="tb-brand" aria-hidden="true">apperture</span>
+      <span id="stealth-shield" class="tb-stealth-shield hidden" title="Hidden from screen share">●</span>
       <div class="drag-pill" title="Drag to move window">
         <span class="drag-dots" aria-hidden="true"></span>
       </div>
@@ -294,7 +295,26 @@
 
       <!-- Tab: Style -->
       <div class="s-body s-tab-pane hidden" data-pane="style">
-        <label class="s-label">AI rules <span class="s-hint">how the AI should write its responses</span></label>
+        <div class="s-stealth-card" id="stealth-status-card">
+          <div class="s-stealth-head">
+            <span class="s-stealth-title">Screen-share hiding</span>
+            <span id="stealth-level-pill" class="stealth-pill stealth-pill-unknown">Checking…</span>
+          </div>
+          <p id="stealth-status-text" class="s-stealth-copy">Checking capture protection…</p>
+          <ul id="stealth-tips" class="s-stealth-tips"></ul>
+        </div>
+
+        <label class="s-label s-label-spaced">Stealth</label>
+        <label class="s-check-row">
+          <input type="checkbox" id="stealth-mode" checked />
+          <span><strong>Stealth mode</strong> — hide apperture branding on screen (shoulder-surfing + cleaner shares)</span>
+        </label>
+        <label class="s-check-row">
+          <input type="checkbox" id="stealth-auto-collapse" checked />
+          <span><strong>Auto-collapse while listening</strong> — shrink to the toolbar during live capture</span>
+        </label>
+
+        <label class="s-label s-label-spaced">AI rules <span class="s-hint">how the AI should write its responses</span></label>
         <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.
 - Never use em-dashes.
 - Reply in 2-3 short bullet points.
