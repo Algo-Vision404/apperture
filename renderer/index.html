@@ -10,13 +10,14 @@
   <div id="app">
     <!-- Brand-first toolbar -->
     <div id="toolbar" class="drag-handle">
-      <button class="tb-logo" id="logo-btn" title="apperture — open guide" aria-label="apperture"></button>
+      <button class="tb-logo" id="logo-btn" title="apperture" aria-label="apperture"></button>
       <span class="tb-brand" aria-hidden="true">apperture</span>
       <span id="stealth-shield" class="tb-stealth-shield hidden" title="Hidden from screen share">●</span>
       <div class="drag-pill" title="Drag to move window">
         <span class="drag-dots" aria-hidden="true"></span>
       </div>
       <div class="tb-divider"></div>
+      <button class="tb-guide" id="guide-btn" title="Guide — tips by topic" aria-label="Open guide" aria-pressed="false"></button>
       <button class="tb-hide" id="hide-btn"><span class="chev"></span><span>Hide</span></button>
       <button class="tb-stop" id="stop-btn" title="Start / stop listening"></button>
       <button class="tb-quit" id="quit-btn" title="Quit apperture"></button>
@@ -57,7 +58,7 @@
                     <strong>Assist</strong><span>Scan screen</span>
                   </button>
                   <button type="button" class="me-card" data-empty-action="settings">
-                    <strong>Settings</strong><span>Keys, audio, stealth</span>
+                    <strong>Settings</strong><span>Gear · keys &amp; stealth</span>
                   </button>
                 </div>
               </div>
@@ -96,7 +97,7 @@
                   <button id="smart-toggle" class="smart-pill"><span class="ic"></span><span>Smart</span></button>
                   <button id="resume-toggle" class="smart-pill resume-pill" title="Ground answers in your résumé"><span class="ic"></span><span>Resume</span></button>
                   <button id="history-btn" class="history-btn" title="Live transcript"><span class="ic"></span></button>
-                  <button id="more-btn" class="more-btn" title="Settings"></button>
+                  <button id="more-btn" class="more-btn" title="Settings" aria-label="Settings"></button>
                 </div>
                 <button id="send-btn" title="Send message (Enter)"></button>
               </div>
@@ -135,12 +136,12 @@
 
       <!-- Tab bar -->
       <div class="s-tabs">
-        <button class="s-tab on" data-tab="keys">AI</button>
-        <button class="s-tab" data-tab="transcription">Audio</button>
-        <button class="s-tab" data-tab="profile">Profile</button>
-        <button class="s-tab" data-tab="prep">Prep</button>
-        <button class="s-tab" data-tab="style">Stealth</button>
-        <button class="s-tab" data-tab="qa">Q&amp;A</button>
+        <button class="s-tab on" data-tab="keys"><span class="s-tab-ic" data-icon="key"></span><span>AI</span></button>
+        <button class="s-tab" data-tab="transcription"><span class="s-tab-ic" data-icon="mic"></span><span>Audio</span></button>
+        <button class="s-tab" data-tab="profile"><span class="s-tab-ic" data-icon="user"></span><span>Profile</span></button>
+        <button class="s-tab" data-tab="prep"><span class="s-tab-ic" data-icon="list"></span><span>Prep</span></button>
+        <button class="s-tab" data-tab="style"><span class="s-tab-ic" data-icon="shield"></span><span>Stealth</span></button>
+        <button class="s-tab" data-tab="qa"><span class="s-tab-ic" data-icon="message-circle"></span><span>Q&amp;A</span></button>
       </div>
 
       <!-- Tab: Keys -->
@@ -357,19 +358,28 @@
     </div>
   </div>
 
-  <!-- First-run tutorial / walkthrough -->
+  <!-- Topic guide — pick one tip at a time; close anytime -->
   <div id="onboard-scrim" class="hidden">
     <div id="onboard" class="glass">
-      <div class="ob-dots" id="ob-dots"></div>
-      <div class="ob-icon" id="ob-icon"></div>
-      <div class="ob-title" id="ob-title"></div>
-      <div class="ob-body" id="ob-body"></div>
-      <div class="ob-buttons" id="ob-buttons"></div>
-      <div class="ob-actions">
-        <button id="ob-skip" class="ob-ghost">Skip</button>
-        <div class="spacer"></div>
-        <button id="ob-back" class="ob-ghost">Back</button>
-        <button id="ob-next" class="ob-primary">Next</button>
+      <div id="ob-hub" class="ob-hub">
+        <div class="ob-hub-kicker">Guide</div>
+        <div class="ob-hub-title">Pick a topic</div>
+        <div class="ob-hub-sub">One tip at a time — close whenever you’re done.</div>
+        <div id="ob-topics" class="ob-topics"></div>
+        <div class="ob-actions ob-hub-actions">
+          <button id="ob-close" class="ob-ghost">Close</button>
+        </div>
+      </div>
+      <div id="ob-detail" class="ob-detail hidden">
+        <div class="ob-icon" id="ob-icon"></div>
+        <div class="ob-title" id="ob-title"></div>
+        <div class="ob-body" id="ob-body"></div>
+        <div class="ob-buttons" id="ob-buttons"></div>
+        <div class="ob-actions">
+          <button id="ob-back" class="ob-ghost">All topics</button>
+          <div class="spacer"></div>
+          <button id="ob-done" class="ob-primary">Done</button>
+        </div>
       </div>
     </div>
   </div>

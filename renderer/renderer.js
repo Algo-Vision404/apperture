@@ -12,6 +12,8 @@
   }
   $('#logo-btn').innerHTML = icon('logo', { size: 17 });
   $('.tb-hide .chev').innerHTML = icon('chevron-down', { size: 14, stroke: 2 });
+  const guideBtn = document.getElementById('guide-btn');
+  if (guideBtn) guideBtn.innerHTML = icon('book', { size: 15 });
   setListenIcon(false);
   $('#quit-btn').innerHTML = icon('x', { size: 15, stroke: 2 });
   document.querySelector('.act[data-mode="assist"] .ic').innerHTML = icon('sparkles', { size: 15 });
@@ -21,8 +23,11 @@
   $('#smart-toggle .ic').innerHTML = icon('zap', { size: 13 });
   const resumeToggleIc = document.querySelector('#resume-toggle .ic');
   if (resumeToggleIc) resumeToggleIc.innerHTML = icon('file-text', { size: 13 });
-  $('#more-btn').innerHTML = icon('more-horizontal', { size: 16 });
+  $('#more-btn').innerHTML = icon('settings', { size: 15 });
   $('#send-btn').innerHTML = icon('send', { size: 14 });
+  document.querySelectorAll('.s-tab-ic[data-icon]').forEach(function (el) {
+    el.innerHTML = icon(el.dataset.icon, { size: 12 });
+  });
   const clearIC = document.querySelector('#clear-transcript-btn .ic');
   if (clearIC) clearIC.innerHTML = icon('trash-2', { size: 13 });
   const closeSidebarIcon = document.getElementById('close-sidebar-btn');
@@ -2230,8 +2235,7 @@
 
   // ---- global keys -------------------------------------------------------
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !scrim.classList.contains('hidden')) closeSettings();
-    if ((e.metaKey || e.ctrlKey) && e.key === ',') { e.preventDefault(); openSettings(); }
+    if (e.key === 'Escape' && !scrim.classList.contains('hidden')) { void closeSettings(); }
   });
 
   // ---- click-through: only the UI blocks the mouse; empty gaps pass to your screen ----
@@ -2252,7 +2256,7 @@
   // ---- window drag (manual — reliable on Linux + with click-through) ----
   function dragTarget(el) {
     if (!el || !el.closest) return null;
-    if (el.closest('button, a, input, textarea, select, .tb-hide, .tb-stop, .tb-quit, .tb-logo')) return null;
+    if (el.closest('button, a, input, textarea, select, .tb-hide, .tb-stop, .tb-quit, .tb-logo, .tb-guide')) return null;
     return el.closest('#toolbar, .drag-pill, .drag-handle');
   }
   function onDragMove(e) {
@@ -2323,8 +2327,10 @@
     if (e.key === 'Escape' && pendingConsentId) { e.preventDefault(); answerConsent(false); }
   });
 
-  // ---- onboarding / first-run tutorial -----------------------------------
+  // ---- topic guide (pick one tip; close anytime) --------------------------
   const obScrim = $('#onboard-scrim');
+  const obHub = document.getElementById('ob-hub');
+  const obDetail = document.getElementById('ob-detail');
   const permissionHelp = isWindows
     ? 'apperture needs permission to see and hear. Open Windows Privacy & security settings, allow <strong>Microphone</strong> and <strong>Screen recording</strong> for apperture, then come back here.'
     : isMac
@@ -2344,58 +2350,147 @@
   const assistShortcut = isWindows ? '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>' : (isMac ? '<span class="kbd">⌘</span> <span class="kbd">↵</span>' : '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>');
   const solveShortcut = isWindows ? '<span class="kbd">Ctrl</span> <span class="kbd">H</span>' : (isMac ? '<span class="kbd">⌘</span> <span class="kbd">H</span>' : '<span class="kbd">Ctrl</span> <span class="kbd">H</span>');
   const quitShortcut = isWindows ? '<span class="kbd">Ctrl</span><span class="kbd">⇧</span><span class="kbd">X</span>' : (isMac ? '<span class="kbd">⌘</span><span class="kbd">⇧</span><span class="kbd">X</span>' : '<span class="kbd">Ctrl</span><span class="kbd">⇧</span><span class="kbd">X</span>');
-  const OB_STEPS = [
+  const GUIDE_TOPICS = [
     {
+      id: 'welcome',
       icon: 'logo',
+      label: 'What is apperture',
+      blurb: 'Private AI over your screen',
       title: 'Welcome to apperture',
-      body: 'apperture is a private AI copilot that floats over your screen. It can <strong>see your screen</strong>, <strong>hear your meetings</strong>, and help you answer questions or solve coding problems — while staying hidden from most screen shares.<br><br>This quick guide gets you running in about a minute.'
+      body: 'apperture is a private AI copilot that floats over your screen. It can <strong>see your screen</strong>, <strong>hear your meetings</strong>, and help you answer questions or solve coding problems — while staying hidden from most screen shares.'
     },
     {
+      id: 'permissions',
       icon: 'shield',
+      label: 'Permissions',
+      blurb: 'Mic + screen access',
       title: 'Allow apperture to see & hear',
       body: permissionHelp + '<ul><li><strong>Microphone</strong> — to hear you</li><li><strong>Screen recording</strong> — to see your screen and hear meeting audio</li></ul>',
       buttons: permissionButtons
     },
     {
+      id: 'keys',
       icon: 'key',
-      title: 'Connect an AI provider',
-      body: 'apperture uses <strong>your own</strong> API key — pick <span class="hl">OpenAI</span>, <span class="hl">Anthropic</span>, <span class="hl">Google Gemini</span>, <span class="hl">OpenRouter</span>, <span class="hl">Groq</span>, or <span class="hl">Azure AI Foundry</span>. Paste keys in Settings.<br><br><strong>Tip:</strong> For live mic captions in the browser, add a free <span class="hl">Groq</span> key under Settings → <span class="hl">Audio</span> (Whisper STT). For lowest-latency streaming in the desktop app, <span class="hl">Deepgram</span> is best.',
-      buttons: [{ label: 'Open Settings → Audio', action: () => { finishOnboard(); openSettingsTab('transcription'); } }]
+      label: 'Keys & listening',
+      blurb: 'AI replies + mic captions',
+      title: 'Connect a provider',
+      body: 'apperture uses <strong>your own</strong> API key — pick <span class="hl">OpenAI</span>, <span class="hl">Anthropic</span>, <span class="hl">Gemini</span>, <span class="hl">OpenRouter</span>, <span class="hl">Groq</span>, or <span class="hl">Azure</span>. Paste keys in Settings → <span class="hl">AI</span>.<br><br><strong>Tip:</strong> For free live mic captions, add a <span class="hl">Groq</span> key under Settings → <span class="hl">Audio</span>.',
+      buttons: [
+        { label: 'Open Settings → AI', action: () => { closeGuide(); openSettingsTab('keys'); } },
+        { label: 'Open Settings → Audio', action: () => { closeGuide(); openSettingsTab('transcription'); } }
+      ]
     },
     {
+      id: 'stealth',
       icon: 'eye-off',
+      label: 'Stay hidden',
+      blurb: 'Zoom + screen share',
       title: 'Stay hidden in Zoom',
-      body: 'apperture is hidden from most screen shares automatically (Google Meet, Teams, QuickTime — nothing to do). <strong>Zoom needs one setting:</strong><br><br>Zoom → <span class="hl">Settings</span> → <span class="hl">Share Screen</span> → <span class="hl">Advanced</span> → <strong>Screen capture mode</strong> → choose <strong>“Advanced capture with window filtering.”</strong><br><br>Avoid “<strong>without</strong> window filtering” — that mode reveals apperture.'
+      body: 'apperture is hidden from most screen shares automatically (Google Meet, Teams, QuickTime). <strong>Zoom needs one setting:</strong><br><br>Zoom → <span class="hl">Settings</span> → <span class="hl">Share Screen</span> → <span class="hl">Advanced</span> → <strong>Screen capture mode</strong> → <strong>“Advanced capture with window filtering.”</strong><br><br>Also check Settings → <span class="hl">Stealth</span> for branding and auto-collapse.',
+      buttons: [{ label: 'Open Stealth settings', action: () => { closeGuide(); openSettingsTab('style'); } }]
     },
     {
-      icon: 'check',
-      title: 'You’re all set',
-      body: 'How to use apperture:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click the <strong>listen</strong> button in the top bar (mic icon) to start hearing a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>apperture logo</strong>. Quit with ' + quitShortcut + '.'
+      id: 'shortcuts',
+      icon: 'zap',
+      label: 'Shortcuts',
+      blurb: 'Listen, ask, quit',
+      title: 'How to use apperture',
+      body: '<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with what’s on screen</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Toolbar <strong>mic</strong> — start / stop listening</li><li>Type a question and press <span class="kbd">↵</span></li><li>Toolbar <strong>Guide</strong> — reopen these tips anytime</li><li>Quit with ' + quitShortcut + '</li></ul>'
     }
   ];
-  let obIndex = 0;
-  function renderOnboard() {
-    const step = OB_STEPS[obIndex];
-    $('#ob-icon').innerHTML = icon(step.icon, { size: 22 });
-    $('#ob-title').textContent = step.title;
-    $('#ob-body').innerHTML = step.body;
-    const btns = $('#ob-buttons'); btns.innerHTML = '';
-    (step.buttons || []).forEach((b) => { const el = document.createElement('button'); el.textContent = b.label; el.addEventListener('click', b.action); btns.appendChild(el); });
-    const dots = $('#ob-dots'); dots.innerHTML = '';
-    OB_STEPS.forEach((_, i) => { const d = document.createElement('span'); if (i === obIndex) d.className = 'on'; dots.appendChild(d); });
-    $('#ob-back').style.visibility = obIndex === 0 ? 'hidden' : 'visible';
-    $('#ob-next').textContent = obIndex === OB_STEPS.length - 1 ? 'Done' : 'Next';
-    $('#ob-skip').style.visibility = obIndex === OB_STEPS.length - 1 ? 'hidden' : 'visible';
+
+  function setGuideOpen(open) {
+    const btn = document.getElementById('guide-btn');
+    if (btn) {
+      btn.classList.toggle('active', open);
+      btn.setAttribute('aria-pressed', open ? 'true' : 'false');
+    }
+    if (open) {
+      obScrim.classList.remove('hidden');
+      setIgnore(false);
+    } else {
+      obScrim.classList.add('hidden');
+    }
   }
-  function showOnboard() { obIndex = 0; renderOnboard(); obScrim.classList.remove('hidden'); setIgnore(false); }
-  async function finishOnboard() {
-    obScrim.classList.add('hidden');
-    if (settings && !settings.onboarded) { settings.onboarded = true; await apperture.settingsSet({ onboarded: true }); }
+
+  function showGuideHub() {
+    if (obHub) obHub.classList.remove('hidden');
+    if (obDetail) obDetail.classList.add('hidden');
+    const list = document.getElementById('ob-topics');
+    if (!list) return;
+    list.innerHTML = '';
+    GUIDE_TOPICS.forEach(function (topic) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ob-topic';
+      btn.innerHTML =
+        '<span class="ob-topic-ic">' + icon(topic.icon, { size: 16 }) + '</span>' +
+        '<span class="ob-topic-copy"><strong>' + topic.label + '</strong><span>' + topic.blurb + '</span></span>' +
+        '<span class="ob-topic-chev">' + icon('chevron-down', { size: 14, stroke: 2 }) + '</span>';
+      btn.addEventListener('click', function () { openGuideTopic(topic.id); });
+      list.appendChild(btn);
+    });
   }
-  $('#ob-next').addEventListener('click', () => { if (obIndex === OB_STEPS.length - 1) finishOnboard(); else { obIndex++; renderOnboard(); } });
-  $('#ob-back').addEventListener('click', () => { if (obIndex > 0) { obIndex--; renderOnboard(); } });
-  $('#ob-skip').addEventListener('click', finishOnboard);
-  $('#logo-btn').addEventListener('click', showOnboard);
+
+  function openGuideTopic(id) {
+    const topic = GUIDE_TOPICS.find(function (t) { return t.id === id; });
+    if (!topic) return;
+    if (obHub) obHub.classList.add('hidden');
+    if (obDetail) obDetail.classList.remove('hidden');
+    $('#ob-icon').innerHTML = icon(topic.icon, { size: 22 });
+    $('#ob-title').textContent = topic.title;
+    $('#ob-body').innerHTML = topic.body;
+    const btns = $('#ob-buttons');
+    btns.innerHTML = '';
+    (topic.buttons || []).forEach(function (b) {
+      const el = document.createElement('button');
+      el.textContent = b.label;
+      el.addEventListener('click', b.action);
+      btns.appendChild(el);
+    });
+  }
+
+  function openGuide(topicId) {
+    showGuideHub();
+    setGuideOpen(true);
+    if (topicId) openGuideTopic(topicId);
+  }
+
+  async function closeGuide() {
+    setGuideOpen(false);
+    if (obHub) obHub.classList.remove('hidden');
+    if (obDetail) obDetail.classList.add('hidden');
+    if (settings && !settings.onboarded) {
+      settings.onboarded = true;
+      await apperture.settingsSet({ onboarded: true });
+    }
+  }
+
+  function toggleGuide() {
+    if (obScrim.classList.contains('hidden')) openGuide();
+    else void closeGuide();
+  }
+
+  // Keep old names used by Windows onboarding patch below
+  const OB_STEPS = GUIDE_TOPICS;
+  function showOnboard() { openGuide(); }
+  async function finishOnboard() { await closeGuide(); }
+
+  const obClose = document.getElementById('ob-close');
+  const obDone = document.getElementById('ob-done');
+  const obBack = document.getElementById('ob-back');
+  if (obClose) obClose.addEventListener('click', () => { void closeGuide(); });
+  if (obDone) obDone.addEventListener('click', () => { void closeGuide(); });
+  if (obBack) obBack.addEventListener('click', showGuideHub);
+  if (guideBtn) guideBtn.addEventListener('click', toggleGuide);
+  obScrim.addEventListener('click', (e) => { if (e.target === obScrim) void closeGuide(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !obScrim.classList.contains('hidden')) {
+      e.preventDefault();
+      void closeGuide();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === ',') { e.preventDefault(); openSettings(); }
+  });
 
   // ---- boot --------------------------------------------------------------
   (async function boot() {
