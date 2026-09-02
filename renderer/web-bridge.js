@@ -32,6 +32,7 @@
   let micWarnedNoKey = false;
   const SYS_FLUSH_MS = 2200;
   const SYS_MIN_BYTES = 16000 * 2 * 1.0; // ~1.0s @ 16 kHz mono int16
+  const MIC_MIN_BYTES = 16000 * 2 * 1.8; // ~1.8s @ 16 kHz — longer chunks help Whisper accuracy
   const SYS_MAX_BYTES = 16000 * 2 * 10;
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   const hasSpeechApi = typeof SpeechRecognitionAPI === 'function';
@@ -170,6 +171,8 @@
   }
 
   async function flushMicPcm() {
+    if (micBusy || !micChunks.length) return;
+    if (micBytes < MIC_MIN_BYTES) return;
     await flushPcmChannel(
       'you',
       function () { return micChunks; },

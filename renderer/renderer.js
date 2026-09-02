@@ -193,8 +193,10 @@
   const composer = $('#composer');
 
   // ========== SMART AUTO-FILL SYSTEM ==========
-  // Track whether the current input text came from STT auto-fill (Them channel)
+  // Track whether the current input text came from STT auto-fill.
+  // sttSourceChannel: which speaker last filled the ask box ('them' | 'you' | null).
   let inputFromSTT = false;
+  let sttSourceChannel = null;
   let sttFillTimer = null;
   let questionFinalizeTimer = null;
   let softClearTimer = null;
@@ -442,6 +444,7 @@
     saveToQuestionHistory(input.value);
     input.value = '';
     inputFromSTT = false;
+    sttSourceChannel = null;
     lastSTTValue = ''; // FIX #6: Clear the tracked STT value
     userSpeechStart = null;
     composer.classList.remove('stt-filling', 'stt-dimmed', 'stt-ready', 'stt-accumulating');
@@ -514,12 +517,14 @@
     const text = input.value.trim();
     if (!text) { runMode('assist', ''); return; }
     const wasFromSTT = inputFromSTT;
+    const sendMode = sttSourceChannel === 'them' ? 'answerThis' : 'ask';
     
     // Save to history before clearing (in case user wants to redo)
     saveToQuestionHistory(text);
     
     input.value = '';
     inputFromSTT = false;
+    sttSourceChannel = null;
     lastSTTValue = ''; // FIX #6: Clear tracked STT value
     userSpeechStart = null;
     composer.classList.remove('stt-filling', 'stt-dimmed', 'stt-ready', 'stt-accumulating');
@@ -529,9 +534,8 @@
     syncPlaceholder();
     updateSendButtonState(); // FIX #9
     
-    // If text came from STT (interviewer question), use answerThis mode
-    // Otherwise use ask mode (user typed their own question)
-    runMode(wasFromSTT ? 'answerThis' : 'ask', text);
+    // Interviewer question in the box → answer it; mic dictation or typed text → ask.
+    runMode(sendMode, text);
   }
   $('#send-btn').addEventListener('click', send);
   input.addEventListener('keydown', (e) => {
@@ -1292,25 +1296,25 @@
     if (!aiEl) startAi(true);
     aiEl.dataset.raw = message; finalizeAi(); setBusy(false);
   });
+  function shouldSoftClearForYouSpeech() {
+    // When the ask box holds an interviewer question, mic speech is the user answering —
+    // dim/clear instead of overwriting. Otherwise treat mic as dictation into the ask box.
+    return sttSourceChannel === 'them' && input.value.trim().length > 0;
+  }
+
   apperture.on('transcript', ({ channel, text }) => {
     if (!text || text.trim().length < 2 || /^[?!.,;:\-…]+$/.test(text.trim())) return;
     appendTranscriptHistoryTurn(channel, text, false);
-    // Auto-fill the input box with Them (interviewer) speech
     if (channel === 'them') {
-      cancelSoftClear(); // Interviewer is speaking, cancel any pending clear
+      cancelSoftClear();
+      sttSourceChannel = 'them';
       autoFillInputFromSTT(text);
+    } else if (shouldSoftClearForYouSpeech()) {
+      softClearSTTFill();
     } else {
-      // Mic (You): show captions in the ask box when it is empty so listening is visible.
-      // If Them already filled a question, keep soft-clear behavior instead of overwriting.
-      if (!input.value.trim() && !inputFromSTT) {
-        input.value = text.trim();
-        syncPlaceholder();
-        updateSendButtonState();
-        showInterimInInput('');
-        clearInputInterim();
-      } else {
-        softClearSTTFill();
-      }
+      cancelSoftClear();
+      sttSourceChannel = 'you';
+      autoFillInputFromSTT(text);
     }
   });
   let statusTimer = null;
