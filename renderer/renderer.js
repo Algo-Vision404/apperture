@@ -74,8 +74,27 @@
     showEmptyState();
   }
 
+  function wireEmptyActions(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-empty-action]').forEach(function (btn) {
+      if (btn.dataset.wired === '1') return;
+      btn.dataset.wired = '1';
+      btn.addEventListener('click', function () {
+        const action = btn.getAttribute('data-empty-action');
+        if (action === 'listen') $('#stop-btn').click();
+        else if (action === 'assist') runMode('assist', '');
+        else if (action === 'settings') openSettings();
+      });
+    });
+  }
+
   function showEmptyState() {
-    if (messages.querySelector('.messages-empty')) return;
+    const existing = messages.querySelector('.messages-empty');
+    if (existing && existing.querySelector('.me-quick')) {
+      wireEmptyActions(existing);
+      return;
+    }
+    if (existing) existing.remove();
     const empty = document.createElement('div');
     empty.className = 'messages-empty';
     empty.id = 'messages-empty';
@@ -96,14 +115,7 @@
         '</button>' +
       '</div>';
     messages.appendChild(empty);
-    empty.querySelectorAll('[data-empty-action]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const action = btn.getAttribute('data-empty-action');
-        if (action === 'listen') $('#stop-btn').click();
-        else if (action === 'assist') runMode('assist', '');
-        else if (action === 'settings') openSettings();
-      });
-    });
+    wireEmptyActions(empty);
   }
 
   function hideEmptyState() {
@@ -159,8 +171,35 @@
     clearThinking();
     if (!aiEl) return;
     const raw = aiEl.dataset.raw || '';
-    aiEl.innerHTML = renderMarkdown(raw);
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-block';
+    const body = document.createElement('div');
+    body.className = aiEl.className;
+    body.innerHTML = renderMarkdown(raw);
+    const actions = document.createElement('div');
+    actions.className = 'ai-actions';
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'ai-action-btn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.title = 'Copy response';
+    copyBtn.addEventListener('click', async function () {
+      try {
+        await navigator.clipboard.writeText(raw);
+        copyBtn.textContent = 'Copied';
+        showToast('Copied to clipboard', 1600);
+        setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1600);
+      } catch (_) {
+        showToast('Could not copy', 1800);
+      }
+    });
+    actions.appendChild(copyBtn);
+    wrap.appendChild(body);
+    wrap.appendChild(actions);
+    if (aiEl.parentNode) aiEl.parentNode.replaceChild(wrap, aiEl);
+    else messages.appendChild(wrap);
     aiEl = null; caretEl = null;
+    messages.scrollTop = messages.scrollHeight;
   }
 
   let busyFailsafe = null;
@@ -2399,6 +2438,7 @@
     smartBtn.classList.toggle('on', !!settings.smart);
     if (typeof settings.useResume !== 'boolean') settings.useResume = true;
     updateResumeToggleUi();
+    wireEmptyActions(document.getElementById('messages-empty'));
     showEmptyState();
     syncPlaceholder();
     updateHistoryBadge();

@@ -48,14 +48,27 @@
               <div class="messages-empty" id="messages-empty">
                 <div class="me-kicker">apperture</div>
                 <div class="me-title">Ready when you are</div>
-                <div class="me-body">Tap the mic to listen live, or ask — answers stream from your real model.</div>
+                <div class="me-body">Listen live, ask a question, or let Assist read the room.</div>
+                <div class="me-quick">
+                  <button type="button" class="me-card" data-empty-action="listen">
+                    <strong>Listen</strong><span>Mic + live captions</span>
+                  </button>
+                  <button type="button" class="me-card" data-empty-action="assist">
+                    <strong>Assist</strong><span>Scan screen</span>
+                  </button>
+                  <button type="button" class="me-card" data-empty-action="settings">
+                    <strong>Settings</strong><span>Keys, audio, stealth</span>
+                  </button>
+                </div>
               </div>
             </div>
 
             <div id="action-row">
               <button class="act act-primary" data-mode="say"
                 title="Suggests what to say next based on the conversation">
-                <span class="ic"></span><span>What should I say?</span>
+                <span class="ic"></span>
+                <span class="act-label act-label-full">What should I say?</span>
+                <span class="act-label act-label-short">Say</span>
                 <span class="shortcut-hint" id="say-shortcut-hint"></span>
               </button>
               <button class="act act-secondary" data-mode="assist"
@@ -122,11 +135,11 @@
 
       <!-- Tab bar -->
       <div class="s-tabs">
-        <button class="s-tab on" data-tab="keys">Keys</button>
+        <button class="s-tab on" data-tab="keys">AI</button>
         <button class="s-tab" data-tab="transcription">Audio</button>
         <button class="s-tab" data-tab="profile">Profile</button>
         <button class="s-tab" data-tab="prep">Prep</button>
-        <button class="s-tab" data-tab="style">Style</button>
+        <button class="s-tab" data-tab="style">Stealth</button>
         <button class="s-tab" data-tab="qa">Q&amp;A</button>
       </div>
 
