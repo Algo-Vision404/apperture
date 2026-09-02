@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const { normalizeBaseUrl } = require('./openai-compatible');
+const { migrateGroqModels } = require('./llm');
 
 const FILE = path.join(app.getPath('userData'), 'apperture-data.json');
 
@@ -54,7 +55,7 @@ const DEFAULTS = {
     gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash' },
     custom: { fast: '', smart: '' },
     ollama: { fast: 'llama3.2', smart: 'llama3.3' },
-    groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },
+    groq: { fast: 'openai/gpt-oss-20b', smart: 'openai/gpt-oss-120b' },
     minimax: { fast: 'MiniMax-M2.7', smart: 'MiniMax-M3' },
     azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     openrouter: {
@@ -95,6 +96,8 @@ function load() {
       o.smart = 'minimax/minimax-m2.7:free';
     }
   }
+
+  data = migrateGroqModels(data);
 
   return data;
 }

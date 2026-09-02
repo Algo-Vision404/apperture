@@ -40,7 +40,7 @@ const DEFAULT_MODELS = {
   anthropic: 'claude-3-5-haiku-latest',
   gemini: CURRENT_GEMINI_DEFAULT,
   ollama: 'llama3.2',
-  groq: 'llama-3.1-8b-instant',
+  groq: 'openai/gpt-oss-20b',
   minimax: 'MiniMax-M2.7',
   azure: 'gpt-4o-mini',
   openrouter: OPENROUTER_DEFAULT_MODEL
@@ -51,6 +51,26 @@ const DEFAULT_MODELS = {
 // createLLM migrates them at read time rather than only fixing the default —
 // otherwise an existing user would keep re-hitting the same 404 forever.
 const DEAD_GEMINI_MODEL_RE = /^gemini-(1\.0|1\.5|2\.0)(?:-|$)/i;
+// Groq retired Llama 3.1/3.3 chat models on 2026-08-16 — persisted settings
+// still point at them and 404 until migrated at read time.
+const GROQ_FAST_MODEL = 'openai/gpt-oss-20b';
+const GROQ_SMART_MODEL = 'openai/gpt-oss-120b';
+const DEAD_GROQ_MODEL_RE = /^(llama-3\.1-8b-instant|llama-3\.3-70b-versatile|llama3-8b-8192|llama3-70b-8192)$/i;
+
+function migrateGroqModelId(tier, model) {
+  if (!model || DEAD_GROQ_MODEL_RE.test(model)) {
+    return tier === 'smart' ? GROQ_SMART_MODEL : GROQ_FAST_MODEL;
+  }
+  return model;
+}
+
+function migrateGroqModels(settings) {
+  const g = settings && settings.models && settings.models.groq;
+  if (!g || typeof g !== 'object') return settings;
+  g.fast = migrateGroqModelId('fast', g.fast);
+  g.smart = migrateGroqModelId('smart', g.smart);
+  return settings;
+}
 
 const PROVIDER_LABELS = {
   azure: 'Azure AI Foundry',
@@ -417,6 +437,9 @@ function createLLM(settings) {
   if (provider === OPENROUTER_PROVIDER && LEGACY_OPENROUTER_MODEL_RE.test(model || '')) {
     model = settings.smart ? OPENROUTER_SMART_MODEL : OPENROUTER_DEFAULT_MODEL;
   }
+  if (provider === 'groq') {
+    model = migrateGroqModelId(tier, model);
+  }
   // Older builds set Fast and Smart to the same Gemma free id, so the Smart
   // toggle was a no-op. When Smart is on and the smart slot is still that
   // Fast default (or empty), upgrade to the stronger free model.
@@ -528,5 +551,8 @@ module.exports = {
   OPENROUTER_SMART_MODEL,
   OPENROUTER_FALLBACK_MODELS,
   OPENROUTER_HEADERS,
-  resolveApiKey
+  resolveApiKey,
+  GROQ_FAST_MODEL,
+  GROQ_SMART_MODEL,
+  migrateGroqModels
 };

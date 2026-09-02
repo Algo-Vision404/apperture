@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { normalizeBaseUrl } = require('./openai-compatible');
+const { migrateGroqModels } = require('./llm');
 
 const MAX_AI_RULES_CHARS = 2000;
 const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
@@ -45,7 +46,7 @@ const DEFAULTS = {
     gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash' },
     custom: { fast: '', smart: '' },
     ollama: { fast: 'llama3.2', smart: 'llama3.3' },
-    groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },
+    groq: { fast: 'openai/gpt-oss-20b', smart: 'openai/gpt-oss-120b' },
     minimax: { fast: 'MiniMax-M2.7', smart: 'MiniMax-M3' },
     azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     openrouter: {
@@ -94,6 +95,7 @@ function load() {
     data = deepMerge(DEFAULTS, {});
   }
   data = migrateOpenRouterModels(data);
+  data = migrateGroqModels(data);
   return data;
 }
 

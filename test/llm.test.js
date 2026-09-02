@@ -26,7 +26,7 @@ Module._load = function loadWithOpenAIStub(request, parent, isMain) {
   return originalModuleLoad.call(this, request, parent, isMain);
 };
 
-const { createLLM, formatProviderErrorMessage, isQuotaError, CURRENT_GEMINI_DEFAULT, OPENROUTER_DEFAULT_MODEL, OPENROUTER_SMART_MODEL, OPENROUTER_BASE_URL, resolveApiKey } = require('../src/llm');
+const { createLLM, formatProviderErrorMessage, isQuotaError, CURRENT_GEMINI_DEFAULT, OPENROUTER_DEFAULT_MODEL, OPENROUTER_SMART_MODEL, OPENROUTER_BASE_URL, resolveApiKey, GROQ_FAST_MODEL, GROQ_SMART_MODEL, migrateGroqModels } = require('../src/llm');
 
 test.after(() => {
   Module._load = originalModuleLoad;
@@ -370,6 +370,30 @@ test('OpenRouter migrates legacy free-router / Nvidia Ultra / Nemotron Super Sma
   assert.equal(nemo.model, OPENROUTER_SMART_MODEL);
   await nemo.stream({ system: '', turns: [], onToken: () => {} });
   assert.equal(capturedCompletionRequest.reasoning, undefined);
+});
+
+test('Groq migrates retired Llama 3.1/3.3 chat models to GPT-OSS replacements', () => {
+  const fast = createLLM({
+    provider: 'groq',
+    smart: false,
+    apiKeys: { groq: 'gsk_test' },
+    models: { groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' } }
+  });
+  assert.equal(fast.model, GROQ_FAST_MODEL);
+
+  const smart = createLLM({
+    provider: 'groq',
+    smart: true,
+    apiKeys: { groq: 'gsk_test' },
+    models: { groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' } }
+  });
+  assert.equal(smart.model, GROQ_SMART_MODEL);
+
+  const healed = migrateGroqModels({
+    models: { groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' } }
+  });
+  assert.equal(healed.models.groq.fast, GROQ_FAST_MODEL);
+  assert.equal(healed.models.groq.smart, GROQ_SMART_MODEL);
 });
 
 test('OpenRouter falls back to OPENROUTER_API_KEY from the environment', () => {
