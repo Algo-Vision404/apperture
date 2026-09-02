@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>cue — design preview</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    html, body {
+      background:
+        radial-gradient(1200px 600px at 20% 10%, rgba(201,162,39,0.12), transparent 55%),
+        radial-gradient(900px 500px at 80% 80%, rgba(43,182,115,0.08), transparent 50%),
+        linear-gradient(160deg, #1a2332 0%, #0b0d12 45%, #121820 100%) !important;
+      overflow: auto !important;
+    }
+    #app { padding-bottom: 48px; }
+    .preview-banner {
+      pointer-events: none;
+      margin: 8px auto 0;
+      color: rgba(248,246,240,0.55);
+      font: 500 12px Outfit, system-ui, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-banner">cue design preview · not the live Electron shell</div>
+  <div id="app">
+    <div id="toolbar" class="drag-handle">
+      <div class="drag-pill" title="Drag to move window">
+        <span class="drag-dots" aria-hidden="true"></span>
+        <span class="drag-label">Drag</span>
+      </div>
+      <button class="tb-logo" id="logo-btn" title="cue — open guide" aria-label="cue"></button>
+      <span class="tb-brand" aria-hidden="true">cue</span>
+      <div class="tb-divider"></div>
+      <button class="tb-hide" id="hide-btn"><span class="chev"></span><span>Hide</span></button>
+      <div class="tb-divider"></div>
+      <button class="tb-stop" id="stop-btn" title="Start / stop listening"></button>
+      <div class="tb-divider"></div>
+      <button class="tb-quit" id="quit-btn" title="Quit cue"></button>
+    </div>
+
+    <div id="panel-wrap">
+      <span id="live-dot" class="idle"></span>
+      <div id="stt-status" class="stt-status stt-streaming">live</div>
+      <div id="panel" class="glass no-drag">
+        <div id="panel-columns">
+          <div id="panel-main">
+            <div id="messages">
+              <div class="category-pill">Behavioral</div>
+              <div class="ai-text">
+                At my last role I owned a flaky checkout pipeline that was dropping about 4% of carts. I mapped the failure points, cut a feature flag for the risky path, and shipped a retry queue with metrics. Within two sprints drop-offs fell under 1% and support tickets for payment errors halved.
+              </div>
+            </div>
+
+            <div id="action-row">
+              <button class="act act-primary" data-mode="say">
+                <span class="ic"></span><span>What should I say?</span>
+                <span class="shortcut-hint">⌘⇧↵</span>
+              </button>
+              <span class="sep">•</span>
+              <button class="act act-secondary" data-mode="assist">
+                <span class="ic"></span><span>Assist</span>
+                <span class="shortcut-hint">⌘↵</span>
+              </button>
+              <span class="sep">•</span>
+              <button class="act" data-mode="followup"><span class="ic"></span><span>Follow-up</span></button>
+              <span class="sep">•</span>
+              <button class="act" data-mode="recap"><span class="ic"></span><span>Recap</span></button>
+            </div>
+
+            <div id="composer" class="listening">
+              <div id="input-area">
+                <div id="placeholder" class="hidden"></div>
+                <textarea id="input" rows="1" spellcheck="false">How should I frame my system design experience?</textarea>
+              </div>
+              <div id="composer-bottom">
+                <button id="smart-toggle" class="smart-pill on"><span class="ic"></span><span>Smart</span></button>
+                <button id="history-btn" class="history-btn listening" title="View conversation history"><span class="ic"></span></button>
+                <button id="more-btn" class="more-btn" title="Settings"></button>
+                <div class="spacer"></div>
+                <button id="send-btn" class="has-text ready" title="Send"></button>
+              </div>
+            </div>
+
+            <div id="prep-status" class="prep-status">
+              <span class="prep-item loaded" data-field="resume">Resume</span>
+              <span class="prep-item loaded" data-field="jd">Job</span>
+              <span class="prep-item missing" data-field="stories">Stories</span>
+              <span class="prep-item missing" data-field="salary">Salary</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="icons.js"></script>
+  <script>
+    (function () {
+      const { icon } = window.ICONS;
+      const $ = (s) => document.querySelector(s);
+      $('#logo-btn').innerHTML = icon('logo', { size: 18 });
+      $('.tb-hide .chev').innerHTML = icon('chevron-down', { size: 14 });
+      $('#stop-btn').innerHTML = icon('stop-square', { size: 15 });
+      $('#quit-btn').innerHTML = icon('x', { size: 14 });
+      document.querySelector('.act[data-mode="assist"] .ic').innerHTML = icon('sparkles', { size: 16 });
+      document.querySelector('.act[data-mode="say"] .ic').innerHTML = icon('wand-sparkles', { size: 16 });
+      document.querySelector('.act[data-mode="followup"] .ic').innerHTML = icon('message-circle', { size: 16 });
+      document.querySelector('.act[data-mode="recap"] .ic').innerHTML = icon('refresh-cw', { size: 16 });
+      $('#smart-toggle .ic').innerHTML = icon('zap', { size: 14 });
+      $('#more-btn').innerHTML = icon('more-horizontal', { size: 18 });
+      $('#send-btn').innerHTML = icon('play', { size: 15 });
+      $('#history-btn').innerHTML = icon('message-square-text', { size: 15 });
+    })();
+  </script>
+</body>
+</html>
