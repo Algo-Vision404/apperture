@@ -11,7 +11,7 @@ const FILE = path.join(app.getPath('userData'), 'cue-data.json');
 const MAX_AI_RULES_CHARS = 2000;
 
 const DEFAULTS = {
-  provider: 'openai',
+  provider: 'openrouter',
   sttProvider: 'auto',
   localWhisper: {
     modelId: 'base.en',

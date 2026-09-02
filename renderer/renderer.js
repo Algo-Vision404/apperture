@@ -79,7 +79,7 @@
     empty.innerHTML =
       '<div class="me-kicker">cue</div>' +
       '<div class="me-title">Ready when you are</div>' +
-      '<div class="me-body">Tap the mic to listen, or ask about what’s on screen.</div>';
+      '<div class="me-body">Tap the mic to listen live, or ask — answers stream from your real model.</div>';
     messages.appendChild(empty);
   }
 
@@ -1663,19 +1663,7 @@
     }
   }
 
-  // ---- demo conversation (preview only; boot uses empty state) ------------
-  function showExample() {
-    hideEmptyState();
-    const pill = document.createElement('div');
-    pill.className = 'category-pill';
-    pill.textContent = 'Behavioral';
-    messages.appendChild(pill);
-    addUserBubble('What should I say?');
-    const ai = document.createElement('div');
-    ai.className = 'ai-text';
-    ai.textContent = 'At my last role I owned a flaky checkout pipeline that was dropping about 4% of carts. I mapped the failure points, cut a feature flag for the risky path, and shipped a retry queue with metrics. Within two sprints drop-offs fell under 1% and support tickets for payment errors halved.';
-    messages.appendChild(ai);
-  }
+  // demo conversation helper removed — boot always starts from the live empty state
 
   // ---- global keys -------------------------------------------------------
   document.addEventListener('keydown', (e) => {

@@ -80,7 +80,7 @@ That's the whole setup on Windows. There's no permission dance — grant the mic
 npm run web
 ```
 
-Opens the real cue renderer at `http://127.0.0.1:43142/` with a local mock of Electron IPC (settings, Assist/Say demo replies, listening toggle). Full screen/mic/STT still need `npm start` (Electron).
+Opens the real cue UI at `http://127.0.0.1:43142/` with a **live** backend: Assist/Say/Follow-up/Recap stream from your real provider (default **OpenRouter** + `nvidia/nemotron-3-ultra-550b-a55b:free`). Set `OPENROUTER_API_KEY` or paste a key in Settings. Listening uses the browser’s live Speech Recognition API for mic captions. Overlay click-through, global shortcuts, and local whisper.cpp still need `npm start` (Electron).
 
 To build a standalone app:
 ```bash
