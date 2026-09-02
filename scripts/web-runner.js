@@ -67,7 +67,12 @@ function injectBridge(html) {
       mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 75%);
     }
     html.apperture-web #app {
-      position: relative;
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
+      right: auto !important;
+      width: auto !important;
+      margin: 0 auto !important;
       z-index: 2;
       height: auto !important;
       max-height: none !important;

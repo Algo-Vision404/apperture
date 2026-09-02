@@ -1864,6 +1864,8 @@
   }
   document.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
+    // Web page layout breaks if #app is switched to position:fixed for dragging.
+    if (apperture.isWeb) return;
     if (!dragTarget(e.target)) return;
     // Keep mouse events on the window so drag survives click-through.
     setIgnore(false);

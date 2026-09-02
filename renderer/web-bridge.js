@@ -15,6 +15,9 @@
   let speechActive = false;
   let heardSpeech = false;
   let speechWatchdog = null;
+  let speechRestartTimer = null;
+  let speechRestartAttempts = 0;
+  let speechFatal = false;
   let micMode = 'browser-speech'; // browser-speech | cloud-mic | none | off
   let transcriptTurns = [];
   let busyAsk = false;
@@ -217,6 +220,7 @@
 
   // MUST be called synchronously from the listen click (user gesture).
   function startSpeechRecognition() {
+    if (speechFatal) return false;
     if (!hasSpeechApi) {
       emit('status', {
         message: 'This browser has no Speech Recognition API. Add OpenAI, Groq, or Gemini in Settings → Audio for cloud mic STT.'
@@ -236,7 +240,6 @@
       recognition = null;
     }
     speechActive = false;
-    heardSpeech = false;
     const rec = new SpeechRecognitionAPI();
     recognition = rec;
     rec.continuous = true;
@@ -245,26 +248,27 @@
     rec.maxAlternatives = 1;
     rec.onstart = function () {
       speechActive = true;
+      speechRestartAttempts = 0;
       emit('stt:status', { channel: 'you', status: 'connected' });
-      emit('status', { message: 'Mic captions live — speak and you’ll see text in the ask box.' });
       armSpeechWatchdog();
     };
     rec.onerror = function (ev) {
       const err = (ev && ev.error) || 'speech error';
       if (err === 'not-allowed') {
+        speechFatal = true;
         speechActive = false;
         emit('status', { message: 'Microphone permission denied — allow mic access, then click listen again.' });
         emit('stt:status', { channel: 'you', status: 'error' });
       } else if (err === 'audio-capture') {
+        speechFatal = true;
         speechActive = false;
-        emit('status', {
-          message: 'Could not capture the microphone. Close other apps using the mic and try again.'
-        });
+        emit('status', { message: 'Could not capture the microphone. Close other apps using the mic and try again.' });
         emit('stt:status', { channel: 'you', status: 'error' });
       } else if (err === 'network' || err === 'service-not-allowed') {
+        speechFatal = true;
         speechActive = false;
         emit('status', {
-          message: 'Browser speech is blocked here. Open http://127.0.0.1:43142/ in Chrome/Edge, or add OpenAI/Groq/Gemini for cloud mic STT.'
+          message: 'Browser speech is blocked here. Ask still works. Use Chrome/Edge on localhost, or add OpenAI/Groq/Gemini for cloud mic STT.'
         });
         emit('stt:status', { channel: 'you', status: 'error' });
       } else if (err !== 'aborted' && err !== 'no-speech') {
@@ -273,8 +277,10 @@
     };
     rec.onend = function () {
       speechActive = false;
-      if (capturing && recognition === rec && micMode === 'browser-speech') {
-        try { rec.start(); } catch (_) {}
+      // Debounced restart — immediate restart loops freeze Chromium.
+      if (capturing && recognition === rec && micMode === 'browser-speech' && !speechFatal) {
+        recognition = null;
+        scheduleSpeechRestart();
       }
     };
     rec.onresult = function (event) {
@@ -284,6 +290,7 @@
         const text = result[0] && result[0].transcript ? result[0].transcript : '';
         if (!text) continue;
         heardSpeech = true;
+        speechRestartAttempts = 0;
         if (result.isFinal) pushFinal('you', text);
         else interim += text;
       }
@@ -298,16 +305,38 @@
     }
   }
 
+  function scheduleSpeechRestart() {
+    if (!capturing || micMode !== 'browser-speech' || speechFatal) return;
+    if (speechRestartTimer) return;
+    if (speechRestartAttempts >= 6) {
+      speechFatal = true;
+      emit('status', {
+        message: 'Mic captions kept stopping. Ask still works — add OpenAI/Groq/Gemini in Settings → Audio, or click listen again later.'
+      });
+      return;
+    }
+    speechRestartAttempts += 1;
+    speechRestartTimer = setTimeout(function () {
+      speechRestartTimer = null;
+      if (!capturing || micMode !== 'browser-speech' || speechFatal) return;
+      startSpeechRecognition();
+    }, 1200);
+  }
+
   function stopSpeechRecognition() {
     speechActive = false;
     if (speechWatchdog) {
       clearTimeout(speechWatchdog);
       speechWatchdog = null;
     }
+    if (speechRestartTimer) {
+      clearTimeout(speechRestartTimer);
+      speechRestartTimer = null;
+    }
     if (!recognition) return;
     const rec = recognition;
     recognition = null;
-    try { rec.onend = null; rec.stop(); } catch (_) {}
+    try { rec.onend = null; rec.onerror = null; rec.onresult = null; rec.stop(); } catch (_) {}
     emit('stt:status', { channel: 'you', status: 'disconnected' });
   }
 
@@ -337,6 +366,8 @@
 
   function endListening() {
     stopSpeechRecognition();
+    speechFatal = false;
+    speechRestartAttempts = 0;
     micMode = 'off';
     syncMicFlags();
     return Promise.all([flushSystemPcm(), flushMicPcm()]).then(function () {
@@ -408,9 +439,12 @@
     usesBrowserSpeech: hasSpeechApi,
     // Call synchronously from the listen button click while the user gesture is alive.
     startBrowserSpeechNow: function () {
+      speechFatal = false;
+      speechRestartAttempts = 0;
+      heardSpeech = false;
       micMode = 'browser-speech';
       syncMicFlags();
-      capturing = true;
+      // Do NOT set capturing=true here — wait for the server toggle so on/off stays in sync.
       return startSpeechRecognition();
     },
     settingsGet: async function () { return api('/api/settings'); },
@@ -505,35 +539,11 @@
       if (sysBytes >= SYS_MAX_BYTES) flushSystemPcm();
     },
     setIgnoreMouse: function () {},
-    dragStart: function (screenX, screenY) {
-      const app = document.getElementById('app');
-      if (!app) return;
-      if (!app.style.position || app.style.position === 'static') {
-        const rect = app.getBoundingClientRect();
-        app.style.position = 'fixed';
-        app.style.left = rect.left + 'px';
-        app.style.top = rect.top + 'px';
-        app.style.right = 'auto';
-        app.style.margin = '0';
-        app.style.width = rect.width + 'px';
-      }
-      const left = parseFloat(app.style.left) || 0;
-      const top = parseFloat(app.style.top) || 0;
-      app.dataset.dragOx = String(screenX - left);
-      app.dataset.dragOy = String(screenY - top);
-    },
-    dragMove: function (screenX, screenY) {
-      const app = document.getElementById('app');
-      if (!app || !app.dataset.dragOx) return;
-      app.style.left = (screenX - Number(app.dataset.dragOx)) + 'px';
-      app.style.top = (screenY - Number(app.dataset.dragOy)) + 'px';
-    },
-    dragEnd: function () {
-      const app = document.getElementById('app');
-      if (!app) return;
-      delete app.dataset.dragOx;
-      delete app.dataset.dragOy;
-    },
+    // Web runner is a normal page — dragging the toolbar into position:fixed
+    // pulls #app out of flow and makes the UI jump/unusable. No-op on web.
+    dragStart: function () {},
+    dragMove: function () {},
+    dragEnd: function () {},
     clearTranscript: async function () {
       transcriptTurns = [];
       await api('/api/transcript', { method: 'DELETE' }).catch(function () {});
