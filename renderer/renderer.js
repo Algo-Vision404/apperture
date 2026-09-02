@@ -7,21 +7,24 @@
   const isMac = cue.platform === 'darwin';
 
   // ---- paint icons -------------------------------------------------------
-  $('#logo-btn').innerHTML = icon('logo', { size: 18 });
-  $('.tb-hide .chev').innerHTML = icon('chevron-down', { size: 14 });
-  $('#stop-btn').innerHTML = icon('stop-square', { size: 15 });
-  $('#quit-btn').innerHTML = icon('x', { size: 14 });
-  document.querySelector('.act[data-mode="assist"] .ic').innerHTML = icon('sparkles', { size: 16 });
-  document.querySelector('.act[data-mode="say"] .ic').innerHTML = icon('wand-sparkles', { size: 16 });
-  document.querySelector('.act[data-mode="followup"] .ic').innerHTML = icon('message-circle', { size: 16 });
-  document.querySelector('.act[data-mode="recap"] .ic').innerHTML = icon('refresh-cw', { size: 16 });
-  $('#smart-toggle .ic').innerHTML = icon('zap', { size: 14 });
-  $('#more-btn').innerHTML = icon('more-horizontal', { size: 18 });
-  $('#send-btn').innerHTML = icon('play', { size: 15 });
+  function setListenIcon(active) {
+    $('#stop-btn').innerHTML = icon(active ? 'listen-active' : 'mic', { size: 15 });
+  }
+  $('#logo-btn').innerHTML = icon('logo', { size: 17 });
+  $('.tb-hide .chev').innerHTML = icon('chevron-down', { size: 14, stroke: 2 });
+  setListenIcon(false);
+  $('#quit-btn').innerHTML = icon('x', { size: 15, stroke: 2 });
+  document.querySelector('.act[data-mode="assist"] .ic').innerHTML = icon('sparkles', { size: 15 });
+  document.querySelector('.act[data-mode="say"] .ic').innerHTML = icon('wand-sparkles', { size: 15 });
+  document.querySelector('.act[data-mode="followup"] .ic').innerHTML = icon('message-circle', { size: 15 });
+  document.querySelector('.act[data-mode="recap"] .ic').innerHTML = icon('refresh-cw', { size: 15 });
+  $('#smart-toggle .ic').innerHTML = icon('zap', { size: 13 });
+  $('#more-btn').innerHTML = icon('more-horizontal', { size: 16 });
+  $('#send-btn').innerHTML = icon('send', { size: 14 });
   const clearIC = document.querySelector('#clear-transcript-btn .ic');
-  if (clearIC) clearIC.innerHTML = icon('trash-2', { size: 15 });
+  if (clearIC) clearIC.innerHTML = icon('trash-2', { size: 14 });
   const closeSidebarIcon = document.getElementById('close-sidebar-btn');
-  if (closeSidebarIcon) closeSidebarIcon.innerHTML = icon('x', { size: 14 });
+  if (closeSidebarIcon) closeSidebarIcon.innerHTML = icon('x', { size: 14, stroke: 2 });
 
   // ---- state -------------------------------------------------------------
   let settings = null;
@@ -932,6 +935,7 @@
   cue.on('capture:state', ({ active, streaming, mode }) => {
     setLiveDotState(active ? 'idle' : 'off');
     $('#stop-btn').classList.toggle('active', active);
+    setListenIcon(active);
     // FIX #4: Add .listening class to composer when capture is active
     composer.classList.toggle('listening', active);
     // Update history button to show active state when listening
@@ -1042,8 +1046,8 @@
         label.textContent = localLabels[status] || status;
         label.className = 'stt-status stt-' + sttState;
       }
-      if (status === 'loading') $('#stop-btn').classList.add('active');
-      if (status === 'off' || status === 'error') $('#stop-btn').classList.remove('active');
+      if (status === 'loading') { $('#stop-btn').classList.add('active'); setListenIcon(true); }
+      if (status === 'off' || status === 'error') { $('#stop-btn').classList.remove('active'); setListenIcon(false); }
       if (status === 'loading' || status === 'transcribing' || status === 'stopping') setLiveDotState('transcribing');
       if (status === 'ready') setLiveDotState('idle');
       if (status === 'off') setLiveDotState('off');
@@ -1733,7 +1737,7 @@
     {
       icon: 'check',
       title: 'You’re all set',
-      body: 'How to use cue:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click the <strong>listen</strong> button in the top bar (square icon) to start hearing a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>cue logo</strong>. Quit with ' + quitShortcut + '.'
+      body: 'How to use cue:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click the <strong>listen</strong> button in the top bar (mic icon) to start hearing a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>cue logo</strong>. Quit with ' + quitShortcut + '.'
     }
   ];
   let obIndex = 0;

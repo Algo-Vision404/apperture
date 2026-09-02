@@ -183,6 +183,31 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
   cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
   transition: background 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
 }
+#toolbar button svg,
+.act .ic svg,
+.smart-pill .ic svg,
+.history-btn svg,
+.more-btn svg,
+#send-btn svg,
+.tb-stop svg,
+.tb-quit svg,
+.tb-hide .chev svg,
+.ts-close-btn svg,
+.ob-icon svg {
+  display: block;
+  flex-shrink: 0;
+  shape-rendering: geometricPrecision;
+  overflow: visible;
+}
+.act .ic {
+  width: 16px; height: 16px;
+  display: inline-grid; place-items: center;
+}
+.smart-pill .ic {
+  width: 14px; height: 14px;
+  display: inline-grid; place-items: center;
+}
+.tb-logo svg { filter: drop-shadow(0 0.5px 0 rgba(255,255,255,0.15)); }
 .tb-logo {
   width: 30px; height: 30px; border-radius: 11px;
   color: #14100a !important;
@@ -1085,11 +1110,6 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   font-family: var(--font);
   background: linear-gradient(145deg, var(--accent-hi), var(--accent));
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
-}
-#stt-status {
-  top: 12px; left: 16px;
-  font-family: var(--font);
-  letter-spacing: 0.1em;
 }
 .ts-title {
   font-family: var(--font-brand);

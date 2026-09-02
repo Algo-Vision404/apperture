@@ -1,46 +1,154 @@
-// Inlined Lucide icon paths (MIT, lucide.dev) + cue's own logo glyph.
-// icon(name, {size, stroke, fill}) -> SVG markup string.
+// cue icon system — custom Signal Desk glyphs (24×24 viewBox).
+// Optical balance for dark glass overlays: 1.75 stroke, round caps, sparse fills.
+// icon(name, { size, stroke }) -> SVG markup string.
 (function () {
-  const P = {
-    sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
-    'wand-sparkles': '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.66a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>',
-    'message-circle': '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
-    'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-    zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
-    'chevron-down': '<path d="m6 9 6 6 6-6"/>',
-    'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    'more-horizontal': '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
-    settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
-    'message-square-text': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/>',
-    'trash-2': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
-    key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
-    shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
-    'eye-off': '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
-    check: '<path d="M20 6 9 17l-5-5"/>',
-    hand: '<path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const STROKE = {
+    // Assist — four-point cue spark + satellite ticks
+    sparkles:
+      '<path d="M12 2.8 13.35 8.55a1.55 1.55 0 0 0 1.0 1.0L20 10.9l-5.65 1.35a1.55 1.55 0 0 0-1.0 1.0L12 18.9l-1.35-5.65a1.55 1.55 0 0 0-1.0-1.0L4 10.9l5.65-1.35a1.55 1.55 0 0 0 1.0-1.0Z"/>' +
+      '<path d="M18.4 3.6v2.8M19.8 5h-2.8"/>' +
+      '<path d="M5.4 16.6v2.2M6.5 17.7H4.3"/>',
+
+    // What should I say — reply wand with soft sparks
+    'wand-sparkles':
+      '<path d="M4.2 19.8 14.6 9.4"/>' +
+      '<path d="M13.4 8.2 15.8 10.6"/>' +
+      '<path d="M16.4 3.9 20.1 7.6a1.15 1.15 0 0 1 0 1.62L18.4 10.9 13.1 5.6 14.8 3.9a1.15 1.15 0 0 1 1.62 0Z"/>' +
+      '<path d="M7.9 3.9v2.3M9.05 5.05H6.75"/>' +
+      '<path d="M19.7 13.9v2.3M20.85 15.05h-2.3"/>',
+
+    // Follow-up — soft bubble with cue dashes
+    'message-circle':
+      '<path d="M19.85 12.15a7.85 7.85 0 0 1-11.2 7.05L3.9 20.5l1.5-4.4A7.85 7.85 0 1 1 19.85 12.15Z"/>' +
+      '<path d="M9 11.9h6M9 9.15h4.1"/>',
+
+    // Recap — balanced refresh arrows
+    'refresh-cw':
+      '<path d="M20.2 11a8.2 8.2 0 0 0-14.55-4.25L4 9"/>' +
+      '<path d="M4 4.2v4.9h4.9"/>' +
+      '<path d="M3.8 13a8.2 8.2 0 0 0 14.55 4.25L20 15"/>' +
+      '<path d="M20 19.8v-4.9h-4.9"/>',
+
+    // Smart — taut bolt
+    zap: '<path d="M13.35 2.9 6.1 13.35h4.85L9.85 21.1 17.9 10.1h-4.9Z"/>',
+
+    'chevron-down': '<path d="m6.8 9.2 5.2 5.2 5.2-5.2"/>',
+    'chevron-up': '<path d="m6.8 14.8 5.2-5.2 5.2 5.2"/>',
+
+    x: '<path d="M6.9 6.9 17.1 17.1"/><path d="M17.1 6.9 6.9 17.1"/>',
+
+    'more-horizontal':
+      '<circle cx="5.2" cy="12" r="1.45" fill="currentColor" stroke="none"/>' +
+      '<circle cx="12" cy="12" r="1.45" fill="currentColor" stroke="none"/>' +
+      '<circle cx="18.8" cy="12" r="1.45" fill="currentColor" stroke="none"/>',
+
+    settings:
+      '<circle cx="12" cy="12" r="3.15"/>' +
+      '<path d="M12 3.15v2.2M12 18.65v2.2M3.15 12h2.2M18.65 12h2.2"/>' +
+      '<path d="M5.7 5.7l1.55 1.55M16.75 16.75l1.55 1.55M18.3 5.7l-1.55 1.55M7.25 16.75l-1.55 1.55"/>',
+
+    'message-square-text':
+      '<path d="M19.6 4.9H4.4A1.75 1.75 0 0 0 2.65 6.65v8.7A1.75 1.75 0 0 0 4.4 17.1h3.35l3.55 3.35 3.45-3.35H19.6a1.75 1.75 0 0 0 1.75-1.75v-8.7A1.75 1.75 0 0 0 19.6 4.9Z"/>' +
+      '<path d="M7.2 9.05h7.7M7.2 12.35h5.2"/>',
+
+    'trash-2':
+      '<path d="M4.2 7h15.6"/>' +
+      '<path d="M9 7V5.25A1.45 1.45 0 0 1 10.45 3.8h3.1A1.45 1.45 0 0 1 15 5.25V7"/>' +
+      '<path d="M18.4 7v11.4a1.9 1.9 0 0 1-1.9 1.9H7.5a1.9 1.9 0 0 1-1.9-1.9V7"/>' +
+      '<path d="M10 11v5.2M14 11v5.2"/>',
+
+    key:
+      '<circle cx="8" cy="15.2" r="4.35"/>' +
+      '<path d="M11.35 12.1 19.4 4.05"/>' +
+      '<path d="M16.7 4.2h3.45v3.45"/>',
+
+    shield:
+      '<path d="M12 3.1 19.5 5.9v5.65c0 4.55-3 7.45-7.5 8.9-4.5-1.45-7.5-4.35-7.5-8.9V5.9Z"/>' +
+      '<path d="m9 12 2.05 2.05 4.05-4.15"/>',
+
+    'eye-off':
+      '<path d="M3.2 3.2 20.8 20.8"/>' +
+      '<path d="M10.05 10.2a2.7 2.7 0 0 0 3.75 3.75"/>' +
+      '<path d="M6.9 7.05A10.7 10.7 0 0 0 3.15 12c1.55 3.65 4.9 6.25 8.85 6.25 1.55 0 3-.35 4.3-1"/>' +
+      '<path d="M14.85 8.9A10.5 10.5 0 0 1 20.85 12c-.5 1.15-1.15 2.2-1.95 3.1"/>',
+
+    check: '<path d="m5.2 12.1 4.4 4.4 9.2-9.6"/>',
+
+    // Listen idle — capsule mic
+    mic:
+      '<rect x="9.05" y="3.2" width="5.9" height="10.6" rx="2.95"/>' +
+      '<path d="M6.15 11.5a5.85 5.85 0 0 0 11.7 0"/>' +
+      '<path d="M12 17.2v3.6M8.8 20.8h6.4"/>',
+
+    // Screen / display
+    monitor:
+      '<rect x="3.2" y="4.2" width="17.6" height="11.8" rx="2.1"/>' +
+      '<path d="M8.2 19.6h7.6M12 16v3.6"/>',
+
+    // Send — taut arrow (composer)
+    send:
+      '<path d="M5.1 12h13.2"/>' +
+      '<path d="M12.4 5.6 19.1 12l-6.7 6.4"/>'
   };
-  // Filled glyphs (no stroke)
+
   const FILLED = {
-    play: '<path d="M6 4.5v15a1 1 0 0 0 1.5.87l12-7.5a1 1 0 0 0 0-1.74l-12-7.5A1 1 0 0 0 6 4.5z"/>',
-    'stop-square': '<rect x="5" y="5" width="14" height="14" rx="3.5"/>'
+    play:
+      '<path d="M8.05 5.15v13.7a1.05 1.05 0 0 0 1.62.88l10.55-6.85a1.05 1.05 0 0 0 0-1.76L9.67 4.27A1.05 1.05 0 0 0 8.05 5.15Z"/>',
+    'stop-square':
+      '<rect x="6" y="6" width="12" height="12" rx="2.75"/>',
+    // Listen active — solid capsule + stroke yoke (hybrid drawn below)
+    'listen-active': null
   };
-  // cue logo — lit cue mark (reads on brass and on ink)
-  const LOGO = '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M12 3.2c1.2 0 2.2.9 2.2 2.1S13.2 7.4 12 7.4 9.8 6.5 9.8 5.3 10.8 3.2 12 3.2Z" fill="currentColor"/>' +
-    '<rect x="10.4" y="7.2" width="3.2" height="11.2" rx="1.6" fill="currentColor"/>' +
-    '<path d="M7 19.4h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>' +
+
+  const LOGO =
+    '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" xmlns="' + NS + '" aria-hidden="true">' +
+    '<circle cx="12" cy="4.95" r="2.45" fill="currentColor"/>' +
+    '<rect x="10.25" y="7" width="3.5" height="10.9" rx="1.75" fill="currentColor"/>' +
+    '<path d="M6.9 19.55h10.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" opacity="0.45"/>' +
     '</svg>';
+
+  function listenActive(size) {
+    return (
+      '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" xmlns="' + NS + '" aria-hidden="true">' +
+      '<rect x="9.05" y="3.2" width="5.9" height="10.6" rx="2.95" fill="currentColor"/>' +
+      '<path d="M6.15 11.5a5.85 5.85 0 0 0 11.7 0" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>' +
+      '<path d="M12 17.2v3.6M8.8 20.8h6.4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>' +
+      '</svg>'
+    );
+  }
+
+  function svgStroke(body, size, stroke) {
+    return (
+      '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" ' +
+      'stroke-width="' + stroke + '" stroke-linecap="round" stroke-linejoin="round" ' +
+      'vector-effect="non-scaling-stroke" xmlns="' + NS + '" aria-hidden="true">' +
+      body +
+      '</svg>'
+    );
+  }
+
+  function svgFill(body, size) {
+    return (
+      '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="currentColor" stroke="none" ' +
+      'xmlns="' + NS + '" aria-hidden="true">' +
+      body +
+      '</svg>'
+    );
+  }
 
   function icon(name, opts) {
     opts = opts || {};
     const size = opts.size || 16;
-    const stroke = opts.stroke != null ? opts.stroke : 2;
-    if (name === 'logo') return LOGO.replaceAll('SIZE', size);
-    if (FILLED[name]) {
-      return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="currentColor" stroke="none" xmlns="http://www.w3.org/2000/svg">' + FILLED[name] + '</svg>';
-    }
-    const d = P[name] || '';
-    return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" stroke-width="' + stroke + '" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">' + d + '</svg>';
+    const stroke = opts.stroke != null ? opts.stroke : 1.75;
+    if (name === 'logo') return LOGO.replaceAll('SIZE', String(size));
+    if (name === 'listen-active') return listenActive(size);
+    if (name === 'square') return svgFill(FILLED['stop-square'], size);
+    if (FILLED[name]) return svgFill(FILLED[name], size);
+    if (STROKE[name]) return svgStroke(STROKE[name], size, stroke);
+    return '';
   }
+
   window.ICONS = { icon };
 })();
