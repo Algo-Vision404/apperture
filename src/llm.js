@@ -12,8 +12,7 @@ const OPENROUTER_DEFAULT_MODEL = 'openrouter/free';
 const OPENROUTER_FALLBACK_MODELS = [
   'google/gemma-4-31b-it:free',
   'minimax/minimax-m2.7:free',
-  'nvidia/nemotron-3-super-120b-a12b:free',
-  'nvidia/nemotron-3-ultra-550b-a55b:free'
+  'nvidia/nemotron-3-super-120b-a12b:free'
 ];
 const OPENROUTER_HEADERS = {
   'HTTP-Referer': 'https://github.com/Blueturboguy07/cue',
@@ -401,7 +400,9 @@ function createLLM(settings) {
         if (provider === 'openai') return await streamOpenAI(args);
         if (provider === CUSTOM_PROVIDER) return await streamOpenAI(args);
         if (provider === OPENROUTER_PROVIDER) {
-          const fallbacks = OPENROUTER_FALLBACK_MODELS.filter((id) => id !== model);
+          const fallbacks = OPENROUTER_FALLBACK_MODELS
+            .filter((id) => id !== model)
+            .slice(0, 3);
           const extraBody = { models: fallbacks };
           // Reasoning only on models that advertise it — free-router fallbacks often do not.
           if (/nemotron|reasoning/i.test(model)) {
