@@ -35,3 +35,21 @@ test('explicit cloud selection does not cross-fallback to another provider', () 
   assert.deepEqual(openai.providers, ['openai']);
   assert.deepEqual(gemini.providers, ['gemini']);
 });
+
+test('OpenRouter key enables cloud STT as a last-resort provider', () => {
+  const stt = createSTT({
+    sttProvider: 'auto',
+    apiKeys: { openrouter: 'or-key', openai: 'openai-key' }
+  });
+  assert.equal(stt.available, true);
+  assert.deepEqual(stt.providers, ['openai', 'openrouter']);
+});
+
+test('OpenRouter-only settings still report STT available', () => {
+  const stt = createSTT({
+    sttProvider: 'auto',
+    apiKeys: { openrouter: 'or-key' }
+  });
+  assert.equal(stt.available, true);
+  assert.deepEqual(stt.providers, ['openrouter']);
+});

@@ -673,16 +673,19 @@
   // the user-gesture is fresh for getDisplayMedia (loopback capture needs it).
   $('#stop-btn').addEventListener('click', async () => {
     const turningOn = !$('#stop-btn').classList.contains('active');
-    if (turningOn && !(apperture.isWeb && apperture.usesBrowserSpeech)) {
-      // Electron (and web without Speech API): keep gesture for getDisplayMedia.
+    let speechAlreadyStarted = false;
+    if (turningOn && apperture.isWeb && typeof apperture.startBrowserSpeechNow === 'function') {
+      // Start SpeechRecognition inside the click gesture BEFORE any await/fetch.
+      // Otherwise Chromium often never attaches the microphone.
+      try {
+        speechAlreadyStarted = !!apperture.startBrowserSpeechNow();
+      } catch (_) {
+        speechAlreadyStarted = false;
+      }
+    } else if (turningOn && !(apperture.isWeb && apperture.usesBrowserSpeech)) {
       try { await startSystemAudio(); } catch (_) { /* handled inside startSystemAudio */ }
     }
-    const active = await apperture.captureToggle();
-    if (turningOn && active && apperture.isWeb && apperture.usesBrowserSpeech) {
-      // Start mic captions first, then optionally prompt for meeting-audio share
-      // without blocking SpeechRecognition behind the picker dialog.
-      startSystemAudio().catch(function () {});
-    }
+    const active = await apperture.captureToggle({ speechAlreadyStarted: speechAlreadyStarted });
     if (turningOn && !active) stopSystemAudio();
   });
 
@@ -1036,33 +1039,29 @@
   }
 
   // ---- events from main --------------------------------------------------
-  function shouldStartRendererMic() {
-    // Web + SpeechRecognition: opening getUserMedia steals the mic and captions stay empty.
-    // Electron always needs renderer PCM. Web without Speech API falls back to cloud mic STT.
-    return !(apperture.isWeb && apperture.usesBrowserSpeech);
+  function shouldStartRendererMic(mode) {
+    // Electron always needs renderer PCM.
+    if (!apperture.isWeb) return true;
+    const m = mode || apperture.micMode || (apperture.usesBrowserSpeech ? 'browser-speech' : 'cloud-mic');
+    // Browser speech owns the mic — opening getUserMedia steals it and captions stay empty.
+    return m === 'cloud-mic' || m === 'none';
   }
 
   apperture.on('capture:state', ({ active, streaming, mode }) => {
     setLiveDotState(active ? 'idle' : 'off');
     $('#stop-btn').classList.toggle('active', active);
     setListenIcon(active);
-    // FIX #4: Add .listening class to composer when capture is active
     composer.classList.toggle('listening', active);
-    // Update history button to show active state when listening
     const historyBtn = document.getElementById('history-btn');
     if (historyBtn) {
       historyBtn.classList.toggle('listening', active);
     }
-    // startSystemAudio() is called directly from the stop-button click handler
-    // so that the getDisplayMedia request has a fresh user gesture.
-    // Mic PCM is Electron / cloud-fallback only — skip it when browser speech owns the mic.
     if (active) {
-      if (shouldStartRendererMic()) startMic();
+      if (shouldStartRendererMic(mode)) startMic();
       else stopMic();
     } else {
       stopMic();
       stopSystemAudio();
-      // FIX #2: Clear interim element when capture stops
       if (interimEl) {
         interimEl.textContent = '';
         interimEl.classList.remove('show');
@@ -2045,9 +2044,7 @@
     setListenIcon(!!st.active);
     composer.classList.toggle('listening', !!st.active);
     updateSttStatus({ active: !!st.active, streaming: !!st.active });
-    // If the server was already listening (page refresh), don't open getUserMedia
-    // when browser speech owns the mic — but do refresh the listen UI.
-    if (st.active && shouldStartRendererMic()) startMic();
+    if (st.active && shouldStartRendererMic(st.mode)) startMic();
     if (!settings.onboarded) showOnboard();
   })();
 })();

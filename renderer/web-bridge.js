@@ -1,14 +1,21 @@
 /* apperture web bridge — real backend client (no mock LLM replies).
    Talks to scripts/web-runner.js: live settings + streamed OpenRouter/LLM asks.
-   Mic captions: browser Web Speech API (You) — do NOT also open getUserMedia for PCM,
-   or Chromium steals the mic and SpeechRecognition never hears anything.
-   Meeting/system audio: getDisplayMedia loopback → /api/stt (Them).
-   Fallback: if SpeechRecognition is missing, mic PCM → /api/stt (needs Whisper-capable key). */
+
+   Mic captions (You):
+   - Prefer browser SpeechRecognition when available (free). MUST start on the
+     click gesture — awaiting fetch first often means Chromium never attaches the mic.
+   - Prefer cloud mic PCM when OpenAI/Groq/Gemini Whisper keys exist.
+   - Do NOT hold getUserMedia open while SpeechRecognition is running.
+
+   Meeting audio (Them): getDisplayMedia loopback → /api/stt. */
 (function () {
   const listeners = {};
   let capturing = false;
   let recognition = null;
   let speechActive = false;
+  let heardSpeech = false;
+  let speechWatchdog = null;
+  let micMode = 'browser-speech'; // browser-speech | cloud-mic | none | off
   let transcriptTurns = [];
   let busyAsk = false;
   let sysChunks = [];
@@ -24,7 +31,7 @@
   const SYS_MIN_BYTES = 16000 * 2 * 1.4; // ~1.4s @ 16 kHz mono int16
   const SYS_MAX_BYTES = 16000 * 2 * 10;
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const usesBrowserSpeech = typeof SpeechRecognitionAPI === 'function';
+  const hasSpeechApi = typeof SpeechRecognitionAPI === 'function';
 
   function emit(ch, data) {
     (listeners[ch] || []).forEach(function (cb) {
@@ -88,8 +95,8 @@
     return out.buffer;
   }
 
-  async function flushPcmChannel(channel, getChunks, setChunks, getBytes, setBytes, busyFlag, setBusy, warnedFlag, setWarned) {
-    if (busyFlag || !getChunks().length) return;
+  async function flushPcmChannel(channel, getChunks, setChunks, getBytes, setBytes, busyRef, setBusy, warnedRef, setWarned) {
+    if (busyRef() || !getChunks().length) return;
     if (getBytes() < SYS_MIN_BYTES) return;
     const chunks = getChunks();
     setChunks([]);
@@ -103,13 +110,13 @@
         body: JSON.stringify({ channel: channel, pcmBase64: abToBase64(pcm) })
       });
       if (result && result.available === false) {
-        if (!warnedFlag) {
+        if (!warnedRef()) {
           setWarned(true);
           emit('status', {
             message: result.error || (
               channel === 'them'
                 ? 'Add OpenAI, Groq, or Gemini in Settings to transcribe meeting audio (Them).'
-                : 'Browser speech is unavailable here. Add OpenAI, Groq, or Gemini in Settings → Audio to transcribe the mic.'
+                : 'Add OpenAI, Groq, or Gemini in Settings → Audio to transcribe the mic.'
             )
           });
         }
@@ -147,9 +154,9 @@
       function (v) { sysChunks = v; },
       function () { return sysBytes; },
       function (v) { sysBytes = v; },
-      sysBusy,
+      function () { return sysBusy; },
       function (v) { sysBusy = v; },
-      sysWarnedNoKey,
+      function () { return sysWarnedNoKey; },
       function (v) { sysWarnedNoKey = v; }
     );
   }
@@ -161,9 +168,9 @@
       function (v) { micChunks = v; },
       function () { return micBytes; },
       function (v) { micBytes = v; },
-      micBusy,
+      function () { return micBusy; },
       function (v) { micBusy = v; },
-      micWarnedNoKey,
+      function () { return micWarnedNoKey; },
       function (v) { micWarnedNoKey = v; }
     );
   }
@@ -188,24 +195,48 @@
     if (!sysFlushTimer) {
       sysFlushTimer = setInterval(function () {
         flushSystemPcm();
-        if (!usesBrowserSpeech || !speechActive) flushMicPcm();
+        if (micMode === 'cloud-mic') flushMicPcm();
       }, SYS_FLUSH_MS);
     }
   }
 
-  function startSpeechRecognition() {
-    if (!usesBrowserSpeech) {
+  function syncMicFlags() {
+    window.apperture.micMode = micMode;
+    window.apperture.usesBrowserSpeech = micMode === 'browser-speech';
+  }
+
+  function armSpeechWatchdog() {
+    if (speechWatchdog) clearTimeout(speechWatchdog);
+    speechWatchdog = setTimeout(function () {
+      if (!capturing || micMode !== 'browser-speech' || heardSpeech) return;
       emit('status', {
-        message: 'This browser has no Speech Recognition API for the mic. Meeting audio can still use cloud STT if you share system audio and add an OpenAI/Groq/Gemini key. Mic captions need Chrome/Edge, or a Whisper-capable key with renderer mic capture.'
+        message: 'Listening, but no words yet. Use Chrome/Edge at http://127.0.0.1:43142/, allow the mic, and speak. Or add OpenAI/Groq/Gemini in Settings → Audio for cloud mic STT.'
       });
-      emit('stt:status', { channel: 'you', status: 'connected' });
-      return;
+    }, 10000);
+  }
+
+  // MUST be called synchronously from the listen click (user gesture).
+  function startSpeechRecognition() {
+    if (!hasSpeechApi) {
+      emit('status', {
+        message: 'This browser has no Speech Recognition API. Add OpenAI, Groq, or Gemini in Settings → Audio for cloud mic STT.'
+      });
+      emit('stt:status', { channel: 'you', status: 'error' });
+      return false;
+    }
+    if (window.isSecureContext === false) {
+      emit('status', {
+        message: 'Mic captions need a secure origin. Open http://127.0.0.1:43142/ in Chrome or Edge.'
+      });
+      emit('stt:status', { channel: 'you', status: 'error' });
+      return false;
     }
     if (recognition) {
-      try { recognition.stop(); } catch (_) {}
+      try { recognition.onend = null; recognition.stop(); } catch (_) {}
       recognition = null;
     }
     speechActive = false;
+    heardSpeech = false;
     const rec = new SpeechRecognitionAPI();
     recognition = rec;
     rec.continuous = true;
@@ -216,23 +247,24 @@
       speechActive = true;
       emit('stt:status', { channel: 'you', status: 'connected' });
       emit('status', { message: 'Mic captions live — speak and you’ll see text in the ask box.' });
+      armSpeechWatchdog();
     };
     rec.onerror = function (ev) {
       const err = (ev && ev.error) || 'speech error';
       if (err === 'not-allowed') {
         speechActive = false;
-        emit('status', { message: 'Microphone permission denied — allow mic access to listen.' });
+        emit('status', { message: 'Microphone permission denied — allow mic access, then click listen again.' });
         emit('stt:status', { channel: 'you', status: 'error' });
       } else if (err === 'audio-capture') {
         speechActive = false;
         emit('status', {
-          message: 'Mic captions could not hear the microphone (audio-capture). Close other apps using the mic and try again.'
+          message: 'Could not capture the microphone. Close other apps using the mic and try again.'
         });
         emit('stt:status', { channel: 'you', status: 'error' });
       } else if (err === 'network' || err === 'service-not-allowed') {
         speechActive = false;
         emit('status', {
-          message: 'Browser speech service unavailable on this origin. Use Chrome/Edge on localhost/HTTPS, or add OpenAI/Groq/Gemini for cloud mic STT.'
+          message: 'Browser speech is blocked here. Open http://127.0.0.1:43142/ in Chrome/Edge, or add OpenAI/Groq/Gemini for cloud mic STT.'
         });
         emit('stt:status', { channel: 'you', status: 'error' });
       } else if (err !== 'aborted' && err !== 'no-speech') {
@@ -241,7 +273,7 @@
     };
     rec.onend = function () {
       speechActive = false;
-      if (capturing && recognition === rec) {
+      if (capturing && recognition === rec && micMode === 'browser-speech') {
         try { rec.start(); } catch (_) {}
       }
     };
@@ -251,23 +283,27 @@
         const result = event.results[i];
         const text = result[0] && result[0].transcript ? result[0].transcript : '';
         if (!text) continue;
-        if (result.isFinal) {
-          pushFinal('you', text);
-        } else {
-          interim += text;
-        }
+        heardSpeech = true;
+        if (result.isFinal) pushFinal('you', text);
+        else interim += text;
       }
       if (interim) emit('stt:interim', { channel: 'you', text: interim });
     };
     try {
       rec.start();
+      return true;
     } catch (e) {
       emit('status', { message: 'Could not start speech recognition: ' + e.message });
+      return false;
     }
   }
 
   function stopSpeechRecognition() {
     speechActive = false;
+    if (speechWatchdog) {
+      clearTimeout(speechWatchdog);
+      speechWatchdog = null;
+    }
     if (!recognition) return;
     const rec = recognition;
     recognition = null;
@@ -275,13 +311,34 @@
     emit('stt:status', { channel: 'you', status: 'disconnected' });
   }
 
-  function beginListening() {
-    if (usesBrowserSpeech) startSpeechRecognition();
+  async function resolveMicMode() {
+    let info = { available: false, providers: [] };
+    try { info = await api('/api/stt/status'); } catch (_) {}
+    const providers = (info && info.providers) || [];
+    const hasDirectWhisper = providers.some(function (p) {
+      return p === 'openai' || p === 'groq' || p === 'gemini';
+    });
+    if (hasDirectWhisper) return { mode: 'cloud-mic', info: info };
+    if (hasSpeechApi && window.isSecureContext !== false) return { mode: 'browser-speech', info: info };
+    if (info && info.available) return { mode: 'cloud-mic', info: info };
+    return { mode: 'none', info: info };
+  }
+
+  function beginListening(mode) {
+    micMode = mode || micMode || 'browser-speech';
+    syncMicFlags();
+    if (micMode === 'browser-speech') {
+      if (!recognition) startSpeechRecognition();
+    } else {
+      stopSpeechRecognition();
+    }
     ensureFlushTimer();
   }
 
   function endListening() {
     stopSpeechRecognition();
+    micMode = 'off';
+    syncMicFlags();
     return Promise.all([flushSystemPcm(), flushMicPcm()]).then(function () {
       resetSystemPcm();
       resetMicPcm();
@@ -292,7 +349,6 @@
     if (busyAsk) return;
     busyAsk = true;
     try {
-      // Don't block the ask on transcript sync — the request body already includes turns.
       void syncTranscript({ turns: transcriptTurns });
       const res = await fetch('/api/ask', {
         method: 'POST',
@@ -347,8 +403,16 @@
   window.apperture = {
     platform: platform,
     isWeb: true,
-    // When true, renderer must NOT open getUserMedia for mic PCM — it starves SpeechRecognition.
-    usesBrowserSpeech: usesBrowserSpeech,
+    micMode: micMode,
+    // When true, renderer must NOT open getUserMedia for mic PCM.
+    usesBrowserSpeech: hasSpeechApi,
+    // Call synchronously from the listen button click while the user gesture is alive.
+    startBrowserSpeechNow: function () {
+      micMode = 'browser-speech';
+      syncMicFlags();
+      capturing = true;
+      return startSpeechRecognition();
+    },
     settingsGet: async function () { return api('/api/settings'); },
     settingsSet: async function (patch) {
       return api('/api/settings', { method: 'POST', body: JSON.stringify(patch || {}) });
@@ -375,33 +439,41 @@
       return { platform: platform, winBuild: isWin ? 22621 : 0 };
     },
     ask: function (payload) { streamAsk(payload); },
-    captureToggle: async function () {
+    captureToggle: async function (opts) {
+      opts = opts || {};
+      const speechAlreadyStarted = !!opts.speechAlreadyStarted;
+      const resolved = await resolveMicMode();
       const st = await api('/api/capture/toggle', { method: 'POST', body: '{}' });
       capturing = !!st.active;
+      micMode = capturing ? resolved.mode : 'off';
+      syncMicFlags();
       emit('capture:state', {
         active: capturing,
         streaming: capturing,
-        mode: usesBrowserSpeech ? 'browser-speech' : 'cloud-mic'
+        mode: micMode
       });
       if (capturing) {
-        beginListening();
-        api('/api/stt/status').then(function (info) {
-          if (usesBrowserSpeech) {
-            emit('status', {
-              message: info && info.available
-                ? 'Listening: mic captions (You) via browser speech. Share a tab/window with audio for Them (' + (info.providers || []).join('/') + ').'
-                : 'Mic captions on (browser speech). For meeting audio (Them), share a tab with audio and add OpenAI/Groq/Gemini in Settings → Audio.'
-            });
-          } else if (!info || !info.available) {
-            emit('status', {
-              message: 'This browser cannot do live mic captions. Add OpenAI, Groq, or Gemini in Settings → Audio for cloud mic STT, and share system audio for Them.'
-            });
-          } else {
-            emit('status', {
-              message: 'Listening with cloud STT (' + (info.providers || []).join('/') + ').'
-            });
-          }
-        }).catch(function () {});
+        if (micMode === 'browser-speech') {
+          if (!speechAlreadyStarted || !recognition) startSpeechRecognition();
+          ensureFlushTimer();
+        } else if (micMode === 'cloud-mic') {
+          stopSpeechRecognition();
+          ensureFlushTimer();
+        } else {
+          emit('status', {
+            message: 'No mic transcription path available. Use Chrome/Edge on localhost, or add OpenAI/Groq/Gemini in Settings → Audio.'
+          });
+        }
+        const info = resolved.info || {};
+        if (micMode === 'browser-speech') {
+          emit('status', {
+            message: 'Mic captions on (browser speech). Speak into your mic — text appears in the ask box.'
+          });
+        } else if (micMode === 'cloud-mic') {
+          emit('status', {
+            message: 'Listening with cloud STT (' + ((info.providers || []).join('/') || 'cloud') + ').'
+          });
+        }
       } else {
         await endListening();
       }
@@ -410,13 +482,14 @@
     captureState: async function () {
       const st = await api('/api/capture/state');
       capturing = !!st.active;
-      // Page reload can leave the server "listening" while SpeechRecognition is dead — resume.
-      if (capturing) beginListening();
-      return { active: capturing, streaming: capturing };
+      if (capturing) {
+        const resolved = await resolveMicMode();
+        beginListening(resolved.mode);
+      }
+      return { active: capturing, streaming: capturing, mode: micMode };
     },
     micPcm: function (arrayBuffer) {
-      // Only used when browser SpeechRecognition is unavailable (renderer opens getUserMedia).
-      if (usesBrowserSpeech || !capturing || !arrayBuffer) return;
+      if (micMode !== 'cloud-mic' || !capturing || !arrayBuffer) return;
       const copy = arrayBuffer.slice ? arrayBuffer.slice(0) : arrayBuffer;
       micChunks.push(copy);
       micBytes += copy.byteLength || 0;
