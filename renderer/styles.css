@@ -73,13 +73,16 @@
   --tx-mut: rgba(250, 247, 240, 0.40);
   --ic: rgba(250, 247, 240, 0.72);
 
-  --bd-hair: rgba(255, 236, 190, 0.10);
-  --bd-strong: rgba(255, 236, 190, 0.20);
+  --bd-hair: rgba(255, 236, 190, 0.16);
+  --bd-strong: rgba(255, 236, 190, 0.28);
   --fill-1: rgba(255, 236, 190, 0.035);
   --fill-2: rgba(255, 236, 190, 0.07);
-  --glass: rgba(8, 10, 14, 0.82);
-  --glass-strong: rgba(8, 10, 14, 0.92);
-  --toolbar: rgba(10, 12, 16, 0.94);
+  /* Ultra-clear glass — tint only, so the real desktop shows through */
+  --glass: rgba(10, 12, 18, 0.22);
+  --glass-strong: rgba(10, 12, 18, 0.48);
+  --toolbar: rgba(10, 12, 16, 0.42);
+  --glass-blur: blur(12px) saturate(165%);
+  --glass-shadow: 0 14px 36px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 236, 190, 0.14);
 
   --r-panel: 20px;
   --r-16: 14px;
@@ -229,14 +232,14 @@ html, body {
   padding: 4px 5px 4px 4px;
   border-radius: 16px;
   background:
-    linear-gradient(180deg, rgba(255,236,190,0.06), transparent 40%),
+    linear-gradient(180deg, rgba(255,236,190,0.10), transparent 45%),
     var(--toolbar);
   border: 1px solid var(--bd-hair);
   box-shadow:
-    0 10px 28px rgba(0,0,0,0.45),
-    inset 0 1px 0 rgba(255,236,190,0.08);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
+    0 8px 22px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,236,190,0.14);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   animation: toolbarIn 420ms var(--ease-out) both;
 }
 .drag-handle { -webkit-app-region: no-drag; }
@@ -397,21 +400,19 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(var(--accent-rgb), 0.09), transparent 42%),
-    radial-gradient(90% 70% at 100% 100%, rgba(var(--live-rgb), 0.05), transparent 45%),
+    linear-gradient(165deg, rgba(255,236,190,0.07), transparent 38%),
+    linear-gradient(345deg, rgba(255,255,255,0.04), transparent 42%),
     var(--glass);
-  -webkit-backdrop-filter: blur(44px) saturate(150%);
-  backdrop-filter: blur(44px) saturate(150%);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   border: 1px solid var(--bd-hair);
   border-radius: var(--r-panel);
-  box-shadow:
-    0 18px 48px rgba(0,0,0,0.50),
-    inset 0 1px 0 rgba(255,236,190,0.10);
+  box-shadow: var(--glass-shadow);
 }
 .glass::before {
   content: '';
   position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  opacity: 0.035;
+  opacity: 0.018;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 160px 160px;
   mix-blend-mode: overlay;
@@ -419,8 +420,30 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .glass::after {
   content: '';
   position: absolute; left: 12%; right: 12%; top: 0; height: 1px; pointer-events: none; z-index: 1;
-  background: linear-gradient(90deg, transparent, rgba(255,236,190,0.45), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,236,190,0.55), transparent);
   animation: filament 4.5s var(--ease) infinite;
+}
+/* Chat panel: maximum see-through. Modals keep a touch more body for forms. */
+#panel.glass {
+  background:
+    linear-gradient(165deg, rgba(255,236,190,0.08), transparent 40%),
+    linear-gradient(345deg, rgba(255,255,255,0.05), transparent 45%),
+    rgba(10, 12, 18, 0.14);
+  -webkit-backdrop-filter: blur(10px) saturate(170%);
+  backdrop-filter: blur(10px) saturate(170%);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 236, 190, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+#settings.glass,
+#onboard.glass,
+#consent.glass {
+  background:
+    linear-gradient(165deg, rgba(255,236,190,0.06), transparent 38%),
+    var(--glass-strong);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
 }
 #panel { position: relative; z-index: 1; padding: 22px 24px 18px; animation: overlayIn 380ms var(--ease-out); }
 #panel.collapsed { display: none; }
@@ -455,11 +478,13 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   letter-spacing: -0.03em;
   color: var(--tx-1);
   line-height: 1.15;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
 }
 .me-body {
   font-size: 13.5px; line-height: 1.45;
   color: var(--tx-mut);
   max-width: 34ch;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
 }
 .user-bubble {
   align-self: flex-end;
@@ -477,6 +502,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   font-family: var(--font-voice);
   font-size: 20px; font-weight: 450; line-height: 1.48; letter-spacing: -0.012em;
   text-align: left; margin: 10px 0 4px;
+  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.55), 0 0 1px rgba(0, 0, 0, 0.7);
   -webkit-user-select: text; user-select: text;
   animation: voiceIn 420ms var(--ease-out) both;
 }
@@ -485,8 +511,10 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .ai-text ul { margin: 8px 0; padding-left: 20px; }
 .ai-text li { margin: 5px 0; }
 .ai-text pre {
-  background: rgba(0,0,0,0.40);
-  border: 1px solid rgba(255,236,190,0.08);
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(255,236,190,0.12);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   border-radius: 12px;
   padding: 13px 15px;
   overflow-x: auto;
@@ -696,12 +724,14 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   margin-top: 14px;
   margin-bottom: 22px;
   background:
-    linear-gradient(180deg, rgba(255,236,190,0.04), transparent 28%),
-    rgba(0,0,0,0.22);
-  border: 1px solid rgba(255,236,190,0.10);
+    linear-gradient(180deg, rgba(255,236,190,0.06), transparent 32%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255,236,190,0.14);
   border-radius: 16px;
   padding: 13px 14px 12px;
   display: flex; flex-direction: column; gap: 11px;
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
   transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease), opacity 180ms var(--ease);
 }
 #composer.focused {
@@ -956,12 +986,12 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   flex-direction: column;
   
   /* Glass styling to match main panel */
-  background: var(--glass-strong);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  backdrop-filter: blur(40px) saturate(180%);
+  background: rgba(10, 12, 18, 0.28);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   border: 1px solid var(--bd-hair);
   border-radius: var(--r-16);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow: var(--glass-shadow);
   padding: 14px;
   
   z-index: 10;

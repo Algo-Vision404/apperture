@@ -37,15 +37,27 @@ let busy = false;
 function injectBridge(html) {
   if (html.includes('web-bridge.js')) return html;
   const bootCss = `<style>
+    /* Distinct desktop scene so ultra-clear glass is obvious in the browser runner */
     html, body {
       background:
-        radial-gradient(900px 480px at 12% 0%, rgba(212,160,23,0.16), transparent 55%),
-        radial-gradient(700px 420px at 88% 100%, rgba(60,184,138,0.10), transparent 50%),
-        linear-gradient(165deg, #151922 0%, #07080b 48%, #0d1218 100%) !important;
+        radial-gradient(ellipse 70% 50% at 18% 22%, rgba(90,140,220,0.35), transparent 55%),
+        radial-gradient(ellipse 55% 45% at 78% 70%, rgba(212,160,23,0.28), transparent 50%),
+        radial-gradient(ellipse 40% 35% at 62% 18%, rgba(60,184,138,0.22), transparent 55%),
+        linear-gradient(125deg, #1a2740 0%, #0b1018 42%, #1c1630 100%) !important;
+      background-attachment: fixed !important;
       overflow: hidden !important;
       min-height: 100%;
     }
-    #app { padding-bottom: 40px; padding-top: 28px; max-height: 100vh; overflow: auto; }
+    html::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 75%);
+    }
+    #app { position: relative; z-index: 2; padding-bottom: 40px; padding-top: 28px; max-height: 100vh; overflow: auto; }
   </style>`;
   return html
     .replace('</head>', bootCss + '\n</head>')
