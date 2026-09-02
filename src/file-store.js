@@ -12,6 +12,7 @@ const DATA_PATH = process.env.APPERTURE_DATA_PATH
 const DEFAULTS = {
   provider: 'openrouter',
   sttProvider: 'auto',
+  openrouterSttModel: 'nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b',
   onboarded: true,
   localWhisper: {
     modelId: 'base.en',

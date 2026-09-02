@@ -53,3 +53,11 @@ test('OpenRouter-only settings still report STT available', () => {
   assert.equal(stt.available, true);
   assert.deepEqual(stt.providers, ['openrouter']);
 });
+
+test('OpenRouter STT defaults to Nemotron ASR model id', () => {
+  const { OPENROUTER_STT_MODEL } = require('../src/stt');
+  assert.equal(
+    OPENROUTER_STT_MODEL,
+    'nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b'
+  );
+});

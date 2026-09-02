@@ -13,6 +13,7 @@ const MAX_AI_RULES_CHARS = 2000;
 const DEFAULTS = {
   provider: 'openrouter',
   sttProvider: 'auto',
+  openrouterSttModel: 'nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b',
   localWhisper: {
     modelId: 'base.en',
     language: 'auto',

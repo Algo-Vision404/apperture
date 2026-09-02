@@ -127,10 +127,12 @@
         return;
       }
       if (result && result.error) {
+        const errText = String(result.error || '');
+        const needsCredits = /credit|402|balance|requires at least \$/i.test(errText);
         emit('status', {
-          message: (channel === 'them' ? 'Meeting audio STT: ' : 'Mic STT: ') + result.error +
-            (/credit|402|balance/i.test(String(result.error))
-              ? ' Add a Groq or OpenAI key in Settings → Audio for Whisper (OpenRouter chat keys need audio credits).'
+          message: (channel === 'them' ? 'Meeting audio STT: ' : 'Mic STT: ') + errText +
+            (needsCredits
+              ? ' OpenRouter audio needs ~$0.50 in credits for Nemotron ASR — or add a free Groq/OpenAI key in Settings → Keys.'
               : '')
         });
         emit('stt:status', { channel: channel, status: 'error' });
@@ -372,9 +374,12 @@
     const hasDirectWhisper = providers.some(function (p) {
       return p === 'openai' || p === 'groq' || p === 'gemini';
     });
-    // Prefer real Whisper keys. OpenRouter STT needs audio credits, so keep it
-    // behind browser speech unless speech fails (watchdog fallback).
+    const hasOpenRouter = providers.indexOf('openrouter') !== -1;
+    // Prefer direct Whisper keys. Otherwise use OpenRouter Nemotron ASR when the
+    // chat key is present (needs ~$0.50 OpenRouter audio credits). Browser speech
+    // is last because it often starts without attaching mic audio.
     if (hasDirectWhisper) return { mode: 'cloud-mic', info: info };
+    if (hasOpenRouter) return { mode: 'cloud-mic', info: info };
     if (hasSpeechApi && window.isSecureContext !== false) return { mode: 'browser-speech', info: info };
     if (info && info.available) return { mode: 'cloud-mic', info: info };
     return { mode: 'none', info: info };
@@ -551,7 +556,11 @@
           });
         } else if (micMode === 'cloud-mic') {
           emit('status', {
-            message: 'Listening with cloud STT (' + ((info.providers || []).join('/') || 'cloud') + ').'
+            message: 'Listening with cloud STT (' + ((info.providers || []).join('/') || 'cloud') +
+              (info.providers && info.providers.indexOf('openrouter') !== -1
+                ? ' · Nemotron ASR'
+                : '') +
+              '). Keep speaking.'
           });
         }
       } else {

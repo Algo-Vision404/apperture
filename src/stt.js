@@ -15,7 +15,11 @@ const BASE_VOCAB = 'CI/CD, Docker, Kubernetes, Terraform, Jenkins, AWS, Azure, G
   'pipeline, container, orchestration, Ansible, Prometheus, Grafana, Helm, EKS, ECS, Lambda, ' +
   'S3, EC2, IAM, GitHub Actions, GitLab, Kafka, PostgreSQL, Redis, MongoDB, REST API, gRPC';
 
-const OPENROUTER_STT_MODEL = 'openai/whisper-large-v3-turbo';
+const OPENROUTER_STT_MODEL = 'nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b';
+const OPENROUTER_STT_FALLBACK_MODELS = [
+  'openai/whisper-large-v3-turbo',
+  'qwen/qwen3-asr-0.6b'
+];
 
 function looksLikeHallucination(raw) {
   const trimmed = (raw || '').trim();
@@ -67,31 +71,44 @@ async function transcribeGemini(apiKey, wav) {
 }
 
 async function transcribeOpenRouter(apiKey, wav, model) {
-  const res = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: 'Bearer ' + apiKey,
-      'Content-Type': 'application/json',
-      ...OPENROUTER_HEADERS
-    },
-    body: JSON.stringify({
-      model: model || OPENROUTER_STT_MODEL,
-      language: 'en',
-      input_audio: {
-        data: wav.toString('base64'),
-        format: 'wav'
+  const models = [model || OPENROUTER_STT_MODEL]
+    .concat(OPENROUTER_STT_FALLBACK_MODELS)
+    .filter(function (id, i, arr) { return id && arr.indexOf(id) === i; });
+  let lastErr = null;
+  for (let i = 0; i < models.length; i++) {
+    const modelId = models[i];
+    const res = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+        ...OPENROUTER_HEADERS
+      },
+      body: JSON.stringify({
+        model: modelId,
+        language: 'en',
+        input_audio: {
+          data: wav.toString('base64'),
+          format: 'wav'
+        }
+      })
+    });
+    let body = null;
+    try { body = await res.json(); } catch (_) { body = null; }
+    if (!res.ok) {
+      const message = (body && body.error && (body.error.message || body.error)) || ('HTTP ' + res.status);
+      const err = new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      err.status = res.status;
+      lastErr = err;
+      // Account-level audio credit gate — no point trying other OpenRouter ASR models.
+      if (res.status === 402 || /requires at least \$|credits|balance/i.test(String(message))) {
+        throw err;
       }
-    })
-  });
-  let body = null;
-  try { body = await res.json(); } catch (_) { body = null; }
-  if (!res.ok) {
-    const message = (body && body.error && (body.error.message || body.error)) || ('HTTP ' + res.status);
-    const err = new Error(typeof message === 'string' ? message : JSON.stringify(message));
-    err.status = res.status;
-    throw err;
+      continue;
+    }
+    return ((body && body.text) || '').trim();
   }
-  return ((body && body.text) || '').trim();
+  throw lastErr || new Error('OpenRouter transcription failed');
 }
 
 function createSTT(settings) {
@@ -109,11 +126,16 @@ function createSTT(settings) {
     chain.push({ p: 'gemini', fn: (wav) => transcribeGemini(keys.gemini, wav) });
   }
   const openrouterKey = resolveApiKey('openrouter', keys);
-  // OpenRouter STT needs account audio credits — keep it last behind direct Whisper keys.
+  // OpenRouter STT (Nemotron ASR / Whisper) needs account audio credits — keep it
+  // available, but behind direct Whisper keys.
   if ((selectedProvider === 'auto' || selectedProvider === 'openrouter') && openrouterKey) {
     chain.push({
       p: 'openrouter',
-      fn: (wav) => transcribeOpenRouter(openrouterKey, wav, settings.sttModel || OPENROUTER_STT_MODEL)
+      fn: (wav) => transcribeOpenRouter(
+        openrouterKey,
+        wav,
+        settings.sttModel || settings.openrouterSttModel || OPENROUTER_STT_MODEL
+      )
     });
   }
   if (keys.openai && chain.length > 1) {
@@ -164,4 +186,10 @@ function createSTT(settings) {
   };
 }
 
-module.exports = { createSTT, looksLikeHallucination, buildVocabPrompt, OPENROUTER_STT_MODEL };
+module.exports = {
+  createSTT,
+  looksLikeHallucination,
+  buildVocabPrompt,
+  OPENROUTER_STT_MODEL,
+  OPENROUTER_STT_FALLBACK_MODELS
+};

@@ -1514,6 +1514,12 @@
     document.querySelectorAll('#stt-provider-seg button').forEach((button) => {
       button.classList.toggle('on', button.dataset.sttProvider === (settings.sttProvider || 'auto'));
     });
+    const orStt = document.getElementById('openrouter-stt-model');
+    if (orStt) {
+      orStt.value = settings.openrouterSttModel
+        || settings.sttModel
+        || 'nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b';
+    }
     const localWhisper = settings.localWhisper || { modelId: 'base.en', language: 'auto', threads: 0 };
     $('#whisper-language').value = localWhisper.language || 'auto';
     $('#whisper-threads').value = Number(localWhisper.threads) || 0;
@@ -1845,6 +1851,11 @@
     settings.localWhisper.modelId = $('#whisper-model').value || settings.localWhisper.modelId || 'base.en';
     settings.localWhisper.language = $('#whisper-language').value || 'auto';
     settings.localWhisper.threads = Math.max(0, Math.min(64, Number.parseInt($('#whisper-threads').value, 10) || 0));
+    const orSttSave = document.getElementById('openrouter-stt-model');
+    if (orSttSave) {
+      settings.openrouterSttModel = orSttSave.value.trim()
+        || 'nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b';
+    }
     // Profile
     settings.resumeText = $('#resume-text').value.trim();
     settings.jobDescription = $('#job-description').value.trim();
