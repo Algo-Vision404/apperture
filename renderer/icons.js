@@ -24,11 +24,11 @@
     play: '<path d="M6 4.5v15a1 1 0 0 0 1.5.87l12-7.5a1 1 0 0 0 0-1.74l-12-7.5A1 1 0 0 0 6 4.5z"/>',
     'stop-square': '<rect x="5" y="5" width="14" height="14" rx="3.5"/>'
   };
-  // cue logo — stage signal: a cue bar with a lit tip (not a Cluely pinwheel).
+  // cue logo — lit cue mark (reads on brass and on ink)
   const LOGO = '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="10.25" y="6" width="3.5" height="13" rx="1.75" fill="currentColor"/>' +
-    '<circle cx="12" cy="5" r="2.6" fill="currentColor"/>' +
-    '<path d="M7.5 19.5h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.55"/>' +
+    '<path d="M12 3.2c1.2 0 2.2.9 2.2 2.1S13.2 7.4 12 7.4 9.8 6.5 9.8 5.3 10.8 3.2 12 3.2Z" fill="currentColor"/>' +
+    '<rect x="10.4" y="7.2" width="3.2" height="11.2" rx="1.6" fill="currentColor"/>' +
+    '<path d="M7 19.4h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>' +
     '</svg>';
 
   function icon(name, opts) {
