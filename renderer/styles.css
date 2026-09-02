@@ -97,11 +97,11 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Scrollbars — floating filament, not OS chrome */
-  --sb-size: 9px;
+  --sb-size: 8px;
   --sb-pad: 2px;
-  --sb-thumb: rgba(255, 236, 190, 0.16);
-  --sb-thumb-hover: rgba(232, 184, 74, 0.58);
-  --sb-thumb-active: rgba(212, 160, 23, 0.78);
+  --sb-thumb: rgba(255, 236, 190, 0.22);
+  --sb-thumb-hover: rgba(232, 184, 74, 0.62);
+  --sb-thumb-active: rgba(212, 160, 23, 0.85);
 }
 
 * { box-sizing: border-box; }
