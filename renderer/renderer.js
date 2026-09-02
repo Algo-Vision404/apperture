@@ -693,6 +693,7 @@
         if (typeof apperture.stashPrimedMic === 'function') apperture.stashPrimedMic(stream);
         else stream.getTracks().forEach((t) => t.stop());
       } catch (err) {
+        showMicPermissionBanner('prompt');
         showStatus('Microphone permission is required to listen. Allow access when the browser prompts you, then click listen again.');
       }
     } else if (turningOn && !(apperture.isWeb && apperture.usesBrowserSpeech)) {
@@ -825,8 +826,10 @@
       // Distinguishing "no device" from "denied" from "in use elsewhere"
       // turns one generic dead end into three different next actions.
       if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        showMicPermissionBanner('missing');
         showStatus('No microphone was found. Plug one in, or pick a default input device in your OS sound settings, then try again.');
       } else if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
+        showMicPermissionBanner('denied');
         showStatus(isWindows
           ? 'Microphone permission was denied. Settings → Privacy & security → Microphone → allow apperture, then try again.'
           : 'Microphone permission was denied. System Settings → Privacy & Security → Microphone → allow apperture, then try again.');
@@ -962,6 +965,7 @@
   // ---- transcript history sidebar (hidden by default, manual toggle) ----
   let tsSidebarInterimEl = null;
   let sidebarOpen = false;
+  let sidebarAutoOpened = false;
   // Track last committed row per channel — all chunks from same speaker go in one row
   const tsLastRow = { you: null, them: null };
   const tsRowTimer = { you: null, them: null };
@@ -970,21 +974,39 @@
   function showSidebar() {
     const sidebar = document.getElementById('transcript-sidebar');
     const historyBtn = document.getElementById('history-btn');
+    const app = document.getElementById('app');
     if (sidebar) sidebar.classList.remove('hidden');
     if (historyBtn) historyBtn.classList.add('active');
     const panelWrap = document.getElementById('panel-wrap');
     if (panelWrap) panelWrap.classList.add('sidebar-open');
+    if (app) app.classList.add('sidebar-open');
     sidebarOpen = true;
   }
 
   function hideSidebar() {
     const sidebar = document.getElementById('transcript-sidebar');
     const historyBtn = document.getElementById('history-btn');
+    const app = document.getElementById('app');
     if (sidebar) sidebar.classList.add('hidden');
     if (historyBtn) historyBtn.classList.remove('active');
     const panelWrap = document.getElementById('panel-wrap');
     if (panelWrap) panelWrap.classList.remove('sidebar-open');
+    if (app) app.classList.remove('sidebar-open');
     sidebarOpen = false;
+  }
+
+  const listenRail = document.getElementById('listen-rail');
+  const listenRailProvider = listenRail ? listenRail.querySelector('.lr-provider') : null;
+  function setListenRail(active, opts) {
+    opts = opts || {};
+    if (!listenRail) return;
+    listenRail.classList.toggle('hidden', !active);
+    listenRail.classList.toggle('transcribing', !!opts.transcribing);
+    if (listenRailProvider) {
+      listenRailProvider.textContent = active && opts.provider ? String(opts.provider) : '';
+    }
+    const liveDot = document.getElementById('live-dot');
+    if (liveDot) liveDot.style.display = active ? 'none' : '';
   }
 
   function toggleSidebar() {
@@ -1090,7 +1112,7 @@
 
   function clearTranscriptSidebar() {
     const list = document.getElementById('ts-list');
-    if (list) list.innerHTML = '<div class="ts-placeholder">Conversation history will appear here when listening.</div>';
+    if (list) list.innerHTML = '<div class="ts-placeholder">Speech appears here while you listen.</div>';
     tsSidebarInterimEl = null;
     tsLastRow.you = null; tsLastRow.them = null;
     clearTimeout(tsRowTimer.you); clearTimeout(tsRowTimer.them);
@@ -1115,16 +1137,21 @@
     if (historyBtn) {
       historyBtn.classList.toggle('listening', active);
     }
+    if (!active) {
+      sidebarAutoOpened = false;
+      setListenRail(false);
+    } else {
+      const provider = (mode === 'cloud-mic' && apperture.micMode === 'cloud-mic')
+        ? 'cloud'
+        : (mode === 'browser-speech' ? 'browser' : (mode || 'mic'));
+      setListenRail(true, { provider: provider });
+    }
     if (active) {
       if (shouldStartRendererMic(mode)) startMic();
       else stopMic();
     } else {
       stopMic();
       stopSystemAudio();
-      if (interimEl) {
-        interimEl.textContent = '';
-        interimEl.classList.remove('show');
-      }
       clearInputInterim();
     }
     updateSttStatus({ active, streaming });
@@ -1137,26 +1164,7 @@
     }
   });
 
-  // ---- real-time transcript display (interim + final) ----
-  let interimEl = null;
-  function getOrCreateInterimEl() {
-    if (!interimEl) {
-      interimEl = document.createElement('div');
-      interimEl.className = 'interim-transcript';
-      // Insert into panel-main (the left column), before the action row
-      const panelMain = document.getElementById('panel-main');
-      const actionRow = document.getElementById('action-row');
-      if (panelMain && actionRow && actionRow.parentNode === panelMain) {
-        panelMain.insertBefore(interimEl, actionRow);
-      } else if (panelMain) {
-        panelMain.appendChild(interimEl);
-      } else {
-        document.getElementById('panel').appendChild(interimEl);
-      }
-    }
-    return interimEl;
-  }
-  // FIX #12: Show interim text in input box (grayed/italic) before final arrives
+  // ---- composer interim captions (inside ask box) ----
   let inputInterimEl = null;
   function showInterimInInput(text) {
     if (!inputInterimEl) {
@@ -1179,14 +1187,9 @@
   
   apperture.on('stt:interim', ({ channel, text }) => {
     setLiveDotState('transcribing');
-    const el = getOrCreateInterimEl();
-    const label = channel === 'them' ? 'Them' : 'You';
-    el.textContent = `${label}: ${text}`;
-    el.classList.add('show');
-    appendTranscriptHistoryTurn(channel, text, true); // update sidebar interim
+    setListenRail(true, { transcribing: true, provider: listenRailProvider && listenRailProvider.textContent });
+    appendTranscriptHistoryTurn(channel, text, true);
 
-    // Show live captions in the composer so the ask box reflects what the mic hears.
-    // Them still prefers the real textarea fill on finals; You uses the interim strip.
     if (channel === 'them' && !input.value.trim()) {
       showInterimInInput(text);
     } else if (channel === 'you') {
@@ -1195,15 +1198,22 @@
   });
   apperture.on('stt:final', ({ channel, text }) => {
     setLiveDotState('idle');
-    // Clear interim when we get a final
-    if (interimEl) { interimEl.textContent = ''; interimEl.classList.remove('show'); }
+    setListenRail($('#stop-btn').classList.contains('active'), {
+      transcribing: false,
+      provider: listenRailProvider && listenRailProvider.textContent
+    });
     clearTranscriptInterim();
-    clearInputInterim(); // FIX #12: Clear interim text from input area
-    // sidebar: the final turn is added via the 'transcript' event below
+    clearInputInterim();
   });
   apperture.on('stt:status', ({ channel, status, provider }) => {
     apperture.log(`[stt] ${provider || channel || 'unknown'} ${status}`);
     const label = document.getElementById('stt-status');
+    const listening = $('#stop-btn').classList.contains('active');
+    if (listening && provider && provider !== 'local' && provider !== 'cloud') {
+      setListenRail(true, { provider: provider, transcribing: status === 'transcribing' });
+    } else if (listening && status === 'transcribing') {
+      setListenRail(true, { transcribing: true, provider: listenRailProvider && listenRailProvider.textContent });
+    }
     if (provider === 'local') {
       const localLabels = {
         loading: 'loading local',
@@ -1228,6 +1238,9 @@
     }
     if (status === 'connected' || status === 'streaming') {
       sttState = 'streaming';
+      if (listening && provider) {
+        setListenRail(true, { provider: provider, transcribing: status === 'transcribing' });
+      }
       if (label) {
         label.textContent = 'live';
         label.className = 'stt-status stt-streaming';
@@ -1305,6 +1318,10 @@
   apperture.on('transcript', ({ channel, text }) => {
     if (!text || text.trim().length < 2 || /^[?!.,;:\-…]+$/.test(text.trim())) return;
     appendTranscriptHistoryTurn(channel, text, false);
+    if ($('#stop-btn').classList.contains('active') && !sidebarAutoOpened) {
+      showSidebar();
+      sidebarAutoOpened = true;
+    }
     if (channel === 'them') {
       cancelSoftClear();
       sttSourceChannel = 'them';
@@ -1342,6 +1359,11 @@
   apperture.on('status', ({ message }) => {
     apperture.log('[status] ' + message);
     showStatus(message);
+    const listening = $('#stop-btn').classList.contains('active');
+    if (listening && message && /cloud STT/i.test(message)) {
+      const m = message.match(/cloud STT \(([^)]+)\)/i);
+      if (m) setListenRail(true, { provider: m[1] });
+    }
     if (sttState !== 'disconnected') {
       const lower = message.toLowerCase();
       if (lower.includes('error') || lower.includes(' off')) {
@@ -1432,24 +1454,37 @@
   }
 
   // ---- microphone permission banner --------------------------------------
-  function showMicPermissionBanner() {
+  function showMicPermissionBanner(reason) {
     let banner = document.getElementById('mic-perm-banner');
     if (banner) { banner.classList.add('show'); return; }
     banner = document.createElement('div');
     banner.id = 'mic-perm-banner';
     banner.className = 'show';
+    const web = !!(apperture.isWeb);
+    const denied = reason === 'denied';
+    const missing = reason === 'missing';
+    const body = web
+      ? (denied
+        ? '<strong>Microphone blocked</strong><br>Click the lock icon in your browser address bar → allow Microphone for this site, then click listen again.'
+        : (missing
+          ? '<strong>No microphone found</strong><br>Plug in a mic or choose a default input in your system sound settings, then try again.'
+          : '<strong>Microphone access needed</strong><br>Allow microphone access when the browser prompts you, then click listen again.'))
+      : '<strong>Microphone access required</strong><br>apperture needs microphone permission to hear you during calls. Grant access in System Settings, then try again.';
     banner.innerHTML =
-      '<div class="mic-perm-text">' +
-        '<strong>Microphone access required</strong><br>' +
-        'apperture needs microphone permission to hear you during calls. Grant access in System Settings, then restart apperture.' +
-      '</div>' +
+      '<div class="mic-perm-text">' + body + '</div>' +
       '<div class="mic-perm-actions"></div>';
     const actions = banner.querySelector('.mic-perm-actions');
-    if (apperture.platform === 'darwin') {
+    if (!web && apperture.platform === 'darwin') {
       const openBtn = document.createElement('button');
       openBtn.textContent = 'Open Microphone Settings';
       openBtn.addEventListener('click', () => apperture.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'));
       actions.appendChild(openBtn);
+    }
+    if (web && denied) {
+      const audioBtn = document.createElement('button');
+      audioBtn.textContent = 'Open Audio settings';
+      audioBtn.addEventListener('click', () => openSettingsTab('transcription'));
+      actions.appendChild(audioBtn);
     }
     const dismissBtn = document.createElement('button');
     dismissBtn.textContent = 'Dismiss';
@@ -1478,9 +1513,8 @@
 
   // Tab switching
   document.querySelectorAll('.s-tab').forEach((tab) => {
-    tab.addEventListener('click', async () => {
+    tab.addEventListener('click', () => {
       if (tab.classList.contains('on')) return;
-      if (!(await saveSettings())) return;
       document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('on'));
       document.querySelectorAll('.s-tab-pane').forEach(p => p.classList.add('hidden'));
       tab.classList.add('on');
@@ -2098,8 +2132,8 @@
     {
       icon: 'key',
       title: 'Connect an AI provider',
-      body: 'apperture uses <strong>your own</strong> API key — pick <span class="hl">OpenAI</span>, <span class="hl">Anthropic</span>, <span class="hl">Google Gemini</span>, <span class="hl">OpenRouter</span>, or <span class="hl">Azure AI Foundry</span>. Get a key from your provider, then paste it into apperture\'s Settings (OpenRouter also reads <span class="hl">OPENROUTER_API_KEY</span> from the environment).<br><br><strong>Tip:</strong> For the <em>best</em> real-time listening, add a <span class="hl">Deepgram</span> key (lowest latency streaming transcription). Otherwise, an OpenAI key enables streaming via the Realtime API, and Gemini/Whisper work as batch fallbacks.',
-      buttons: [{ label: 'Open apperture Settings', action: () => { finishOnboard(); openSettings(); } }]
+      body: 'apperture uses <strong>your own</strong> API key — pick <span class="hl">OpenAI</span>, <span class="hl">Anthropic</span>, <span class="hl">Google Gemini</span>, <span class="hl">OpenRouter</span>, <span class="hl">Groq</span>, or <span class="hl">Azure AI Foundry</span>. Paste keys in Settings.<br><br><strong>Tip:</strong> For live mic captions in the browser, add a free <span class="hl">Groq</span> key under Settings → <span class="hl">Audio</span> (Whisper STT). For lowest-latency streaming in the desktop app, <span class="hl">Deepgram</span> is best.',
+      buttons: [{ label: 'Open Settings → Audio', action: () => { finishOnboard(); openSettingsTab('transcription'); } }]
     },
     {
       icon: 'eye-off',

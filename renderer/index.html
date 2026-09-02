@@ -32,6 +32,12 @@
 
           <!-- Left column: AI responses -->
           <div id="panel-main">
+            <div id="listen-rail" class="listen-rail hidden" aria-live="polite">
+              <span class="lr-dot" aria-hidden="true"></span>
+              <span class="lr-label">Listening</span>
+              <span class="lr-provider"></span>
+            </div>
+
             <div id="messages">
               <div class="messages-empty" id="messages-empty">
                 <div class="me-kicker">apperture</div>
@@ -63,7 +69,7 @@
               <div id="composer-bottom">
                 <button id="smart-toggle" class="smart-pill"><span class="ic"></span><span>Smart</span></button>
                 <button id="resume-toggle" class="smart-pill resume-pill" title="Ground answers in your résumé"><span class="ic"></span><span>Resume</span></button>
-                <button id="history-btn" class="history-btn" title="View conversation history"><span class="ic"></span></button>
+                <button id="history-btn" class="history-btn" title="Live transcript"><span class="ic"></span></button>
                 <button id="more-btn" class="more-btn" title="Settings"></button>
                 <div class="spacer"></div>
                 <button id="send-btn" title="Send"></button>
@@ -78,23 +84,23 @@
             </div>
           </div>
 
-        </div><!-- /panel-columns -->
-      </div>
-    </div>
+          <!-- Live transcript — docks beside main column when open -->
+          <div id="transcript-sidebar" class="transcript-sidebar hidden" aria-label="Live transcript">
+            <div class="ts-header">
+              <span class="ts-title">Live transcript</span>
+              <button class="ts-close-btn" id="close-sidebar-btn" title="Close transcript" aria-label="Close transcript"></button>
+            </div>
+            <div id="ts-list" class="ts-list">
+              <div class="ts-placeholder">Speech appears here while you listen.</div>
+            </div>
+            <div class="ts-footer">
+              <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear transcript">
+                <span class="ic"></span><span>Clear</span>
+              </button>
+            </div>
+          </div>
 
-    <!-- Transcript history sidebar — floats OUTSIDE main panel, toggled by history button -->
-    <div id="transcript-sidebar" class="transcript-sidebar hidden">
-      <div class="ts-header">
-        <span class="ts-title">Conversation History</span>
-        <button class="ts-close-btn" id="close-sidebar-btn" title="Close history" aria-label="Close history"></button>
-      </div>
-      <div id="ts-list" class="ts-list">
-        <div class="ts-placeholder">Conversation history will appear here when listening.</div>
-      </div>
-      <div class="ts-footer">
-        <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear conversation history">
-          <span class="ic"></span><span>Clear history</span>
-        </button>
+        </div><!-- /panel-columns -->
       </div>
     </div>
   </div>

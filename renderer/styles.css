@@ -384,7 +384,9 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
 .mic-perm-actions button.dismiss:hover { background: rgba(255,255,255,0.10); color: var(--tx-2); }
 
 /* ============================ Panel ============================ */
-#panel-wrap { position: relative; margin-top: 14px; width: min(640px, 94vw); }
+#panel-wrap { position: relative; margin-top: 14px; width: min(640px, 94vw); transition: width 280ms var(--ease); }
+#panel-wrap.sidebar-open { width: min(900px, 96vw); }
+#app.sidebar-open #panel-wrap { width: min(900px, 96vw); }
 button:focus { outline: none; }
 button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 #live-dot {
@@ -452,7 +454,13 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 /* ============================ Messages ============================ */
 #messages {
   display: flex; flex-direction: column; overflow-y: auto; max-height: 50vh; gap: 2px;
-  padding-right: 2px; /* room for floating thumb without clipping voice text */
+  padding: 12px 14px;
+  margin-bottom: 4px;
+  border-radius: 14px;
+  background: rgba(8, 10, 14, 0.44);
+  border: 1px solid rgba(255,236,190,0.07);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   overscroll-behavior: contain;
   min-height: 88px;
 }
@@ -500,9 +508,9 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .ai-text {
   color: var(--tx-1);
   font-family: var(--font-voice);
-  font-size: 20px; font-weight: 450; line-height: 1.48; letter-spacing: -0.012em;
+  font-size: 19px; font-weight: 400; line-height: 1.5; letter-spacing: -0.01em;
   text-align: left; margin: 10px 0 4px;
-  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.55), 0 0 1px rgba(0, 0, 0, 0.7);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
   -webkit-user-select: text; user-select: text;
   animation: voiceIn 420ms var(--ease-out) both;
 }
@@ -597,44 +605,81 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   font-family: var(--mono);
 }
 
-/* FIX #4: Visual indication that listening is active in input box */
-#composer.listening {
-  border-color: rgba(var(--live-rgb), 0.25);
+/* Listening rail — single status surface while mic is on */
+.listen-rail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(var(--live-rgb), 0.10);
+  border: 1px solid rgba(var(--live-rgb), 0.22);
+  color: rgba(200, 255, 220, 0.92);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  animation: fadeUp 200ms var(--ease-out) both;
 }
-#composer.listening::before {
-  content: '';
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.listen-rail.hidden { display: none; }
+.listen-rail .lr-dot {
+  width: 7px; height: 7px; border-radius: 50%;
   background: var(--live);
-  animation: pulse 2s infinite;
-  pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(var(--live-rgb), 0.22);
+  animation: pulse 2.2s infinite;
+  flex-shrink: 0;
+}
+.listen-rail.transcribing .lr-dot {
+  background: #facc15;
+  box-shadow: 0 0 0 2px rgba(250,204,21,0.22);
+}
+.listen-rail .lr-provider {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(200, 255, 220, 0.65);
+  font-family: var(--mono);
+}
+
+/* Composer listening — border tint only (rail handles the dot) */
+#composer.listening {
+  border-color: rgba(var(--live-rgb), 0.22);
 }
 
 /* FIX #12: Interim text sits inside composer, above the textarea */
 .input-interim {
   display: none;
   position: absolute;
-  top: 8px;
-  left: 12px;
-  right: 48px;
-  padding: 3px 8px;
-  font-size: 11.5px;
+  top: 6px;
+  left: 10px;
+  right: 44px;
+  padding: 4px 10px;
+  font-size: 12px;
   font-style: italic;
-  color: rgba(167, 243, 200, 0.75);
-  background: rgba(var(--live-rgb), 0.10);
-  border-radius: 6px;
-  border: 1px solid rgba(var(--live-rgb), 0.18);
+  color: rgba(220, 255, 235, 0.82);
+  background: rgba(var(--live-rgb), 0.12);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--live-rgb), 0.20);
   pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   z-index: 5;
 }
-#composer.has-interim #input-area { padding-top: 28px; }
+#composer.has-interim #input-area { padding-top: 30px; }
+
+@media (max-width: 720px) {
+  #panel-wrap.sidebar-open,
+  #app.sidebar-open #panel-wrap { width: min(640px, 96vw); }
+  #panel-columns { flex-direction: column; }
+  .transcript-sidebar:not(.hidden) {
+    width: 100%;
+    max-height: 200px;
+    min-height: 140px;
+  }
+}
 
 /* FIX #14: History badge */
 .history-badge {
@@ -665,41 +710,18 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 }
 #composer.stt-filling #input { color: rgba(200,255,220,0.95); }
 
-/* Accumulating state: pulsing border to show text is still coming in */
+/* Accumulating state: subtle border while speech is still coming in */
 #composer.stt-accumulating {
-  border-color: rgba(var(--live-rgb), 0.32);
+  border-color: rgba(var(--live-rgb), 0.34);
   box-shadow: 0 0 0 2px rgba(var(--live-rgb), 0.08);
-  animation: stt-pulse 1.5s ease-in-out infinite;
 }
 
-/* Ready state: solid green, question looks complete */
+/* Ready state: send button morphs — no floating label */
 #composer.stt-ready {
-  border-color: rgba(var(--live-rgb), 0.55);
-  box-shadow: 0 0 0 3px rgba(var(--live-rgb), 0.18), 0 0 12px rgba(var(--live-rgb), 0.15);
+  border-color: rgba(var(--live-rgb), 0.42);
+  box-shadow: 0 0 0 2px rgba(var(--live-rgb), 0.12);
 }
-#composer.stt-ready #input { color: rgba(180,255,200,1); }
-
-/* Ready indicator — tucked into composer, above prep chips */
-#composer.stt-ready::after {
-  content: 'Ready · ↵';
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 9.5px;
-  font-weight: 700;
-  color: rgba(167, 243, 200, 0.85);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  pointer-events: none;
-  background: rgba(var(--live-rgb), 0.12);
-  border: 1px solid rgba(var(--live-rgb), 0.22);
-  border-radius: 999px;
-  padding: 2px 8px;
-  z-index: 3;
-}
-#composer.stt-ready #composer-bottom { padding-bottom: 18px; }
+#composer.stt-ready #input { color: rgba(220, 255, 235, 0.98); }
 
 /* Dimmed state: user is speaking, might clear soon */
 #composer.stt-dimmed {
@@ -722,7 +744,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 #composer {
   position: relative;
   margin-top: 14px;
-  margin-bottom: 22px;
+  margin-bottom: 10px;
   background:
     linear-gradient(180deg, rgba(255,236,190,0.05), transparent 36%),
     rgba(255, 255, 255, 0.03);
@@ -976,41 +998,51 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 /* ============================ Two-column panel layout ============================ */
 #panel-columns {
   display: flex;
-  gap: 0;
-  align-items: flex-start;
+  gap: 14px;
+  align-items: stretch;
 }
 #panel-main {
   flex: 1;
-  min-width: 0; /* allow shrink */
+  min-width: 0;
 }
 
-/* Transcript history sidebar — floats OUTSIDE the main panel */
+/* Transcript sidebar — flex sibling docked to the panel */
 .transcript-sidebar {
-  position: fixed;
-  top: 80px; /* below toolbar */
-  /* FIX #6: Use right edge positioning instead of calc that assumes fixed width */
-  right: 20px;
-  width: 220px;
-  max-height: 480px;
-  min-height: 200px;
+  position: relative;
+  top: auto;
+  right: auto;
+  width: 0;
+  min-width: 0;
+  max-height: none;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0;
+  border-width: 0;
   display: flex;
   flex-direction: column;
-  
-  /* Glass styling to match main panel */
-  background: rgba(10, 12, 18, 0.28);
+  flex-shrink: 0;
+  background: rgba(10, 12, 18, 0.32);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   border: 1px solid var(--bd-hair);
   border-radius: var(--r-16);
   box-shadow: var(--glass-shadow);
-  padding: 14px;
-  
-  z-index: 10;
-  pointer-events: auto;
-  animation: slideInRight 200ms cubic-bezier(0.22,1,0.36,1);
+  pointer-events: none;
+  transition: width 280ms var(--ease), opacity 220ms var(--ease), padding 280ms var(--ease), border-width 220ms var(--ease);
 }
-.transcript-sidebar.hidden { 
-  display: none; 
+.transcript-sidebar:not(.hidden) {
+  width: 236px;
+  min-height: 280px;
+  max-height: 62vh;
+  opacity: 1;
+  padding: 14px;
+  border-width: 1px;
+  pointer-events: auto;
+  animation: slideInRight 220ms cubic-bezier(0.22,1,0.36,1);
+}
+.transcript-sidebar.hidden {
+  display: flex;
 }
 
 @keyframes slideInRight {
@@ -1124,15 +1156,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   color: #fca5a5;
 }
 
-/* Sidebar floats beside the panel without shoving it off-screen */
-#panel-wrap.sidebar-open {
-  width: min(520px, calc(100vw - 280px));
-  transform: none;
-}
-
-#app.sidebar-open #panel-wrap {
-  margin-right: 0;
-}
+/* Sidebar open — panel grows as one unit (width set on #panel-wrap) */
 
 /* ============================ Transcript viewer ============================ */
 .transcript-wrap {
@@ -1209,18 +1233,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 }
 
 /* ============================ STT status ============================ */
-#stt-status {
-  position: absolute; top: 14px; left: 22px; z-index: 4;
-  font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  font-family: var(--font);
-  white-space: nowrap; pointer-events: none;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.28);
-  border: 1px solid rgba(255,236,190,0.08);
-}
-#stt-status[hidden] { display: none !important; }
-#panel-wrap.panel-collapsed #stt-status { display: none !important; }
+#stt-status { display: none !important; }
 .stt-disconnected { color: rgba(255,255,255,0.25); }
 .stt-connecting   { color: #facc15; }
 .stt-streaming    { color: var(--live); }
