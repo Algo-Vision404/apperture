@@ -66,7 +66,7 @@ Go to the [**Releases**](../../releases) page, then choose your platform:
 You need [Node.js](https://nodejs.org) 22.12+ installed (required by dev dependencies). No Xcode and no Visual Studio build tools required — apperture deliberately avoids native modules.
 
 ```bash
-git clone https://github.com/Blueturboguy07/apperture.git
+git clone https://github.com/Algo-Vision404/apperture.git
 cd apperture
 npm install
 npm start
