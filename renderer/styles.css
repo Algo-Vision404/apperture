@@ -78,11 +78,11 @@
   --fill-1: rgba(255, 236, 190, 0.035);
   --fill-2: rgba(255, 236, 190, 0.07);
   /* Ultra-clear glass — tint only, so the real desktop shows through */
-  --glass: rgba(10, 12, 18, 0.22);
-  --glass-strong: rgba(10, 12, 18, 0.48);
-  --toolbar: rgba(10, 12, 16, 0.42);
-  --glass-blur: blur(12px) saturate(165%);
-  --glass-shadow: 0 14px 36px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 236, 190, 0.14);
+  --glass: rgba(10, 12, 18, 0.12);
+  --glass-strong: rgba(10, 12, 18, 0.38);
+  --toolbar: rgba(10, 12, 16, 0.28);
+  --glass-blur: blur(8px) saturate(170%);
+  --glass-shadow: 0 10px 28px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 236, 190, 0.18);
 
   --r-panel: 20px;
   --r-16: 14px;
@@ -426,15 +426,15 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 /* Chat panel: maximum see-through. Modals keep a touch more body for forms. */
 #panel.glass {
   background:
-    linear-gradient(165deg, rgba(255,236,190,0.08), transparent 40%),
-    linear-gradient(345deg, rgba(255,255,255,0.05), transparent 45%),
-    rgba(10, 12, 18, 0.14);
-  -webkit-backdrop-filter: blur(10px) saturate(170%);
-  backdrop-filter: blur(10px) saturate(170%);
+    linear-gradient(165deg, rgba(255,236,190,0.05), transparent 36%),
+    linear-gradient(345deg, rgba(255,255,255,0.04), transparent 48%),
+    rgba(10, 12, 18, 0.06);
+  -webkit-backdrop-filter: blur(6px) saturate(175%);
+  backdrop-filter: blur(6px) saturate(175%);
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 236, 190, 0.16),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    0 10px 28px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 236, 190, 0.20),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 #settings.glass,
 #onboard.glass,
@@ -724,14 +724,14 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   margin-top: 14px;
   margin-bottom: 22px;
   background:
-    linear-gradient(180deg, rgba(255,236,190,0.06), transparent 32%),
-    rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255,236,190,0.14);
+    linear-gradient(180deg, rgba(255,236,190,0.05), transparent 36%),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255,236,190,0.16);
   border-radius: 16px;
   padding: 13px 14px 12px;
   display: flex; flex-direction: column; gap: 11px;
-  -webkit-backdrop-filter: blur(8px) saturate(140%);
-  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(150%);
+  backdrop-filter: blur(6px) saturate(150%);
   transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease), opacity 180ms var(--ease);
 }
 #composer.focused {
