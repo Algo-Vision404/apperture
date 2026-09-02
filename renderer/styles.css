@@ -77,12 +77,13 @@
   --bd-strong: rgba(255, 236, 190, 0.28);
   --fill-1: rgba(255, 236, 190, 0.035);
   --fill-2: rgba(255, 236, 190, 0.07);
-  /* Ultra-clear glass — tint only, so the real desktop shows through */
-  --glass: rgba(10, 12, 18, 0.12);
-  --glass-strong: rgba(10, 12, 18, 0.38);
-  --toolbar: rgba(10, 12, 16, 0.28);
-  --glass-blur: blur(8px) saturate(170%);
-  --glass-shadow: 0 10px 28px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 236, 190, 0.18);
+  /* Readable dark glass — still translucent, but opaque enough for light desktops
+     (Windows Electron often skips backdrop-filter on transparent windows). */
+  --glass: rgba(10, 12, 18, 0.82);
+  --glass-strong: rgba(10, 12, 18, 0.92);
+  --toolbar: rgba(10, 12, 16, 0.88);
+  --glass-blur: blur(18px) saturate(160%);
+  --glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 236, 190, 0.16);
 
   --r-panel: 20px;
   --r-16: 14px;
@@ -596,18 +597,18 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   background: linear-gradient(90deg, transparent, rgba(255,236,190,0.55), transparent);
   animation: filament 4.5s var(--ease) infinite;
 }
-/* Chat panel: maximum see-through. Modals keep a touch more body for forms. */
+/* Chat panel: dark enough to read on light wallpapers; still slightly translucent. */
 #panel.glass {
   background:
-    linear-gradient(165deg, rgba(255,236,190,0.05), transparent 36%),
-    linear-gradient(345deg, rgba(255,255,255,0.04), transparent 48%),
-    rgba(10, 12, 18, 0.06);
-  -webkit-backdrop-filter: blur(6px) saturate(175%);
-  backdrop-filter: blur(6px) saturate(175%);
+    linear-gradient(165deg, rgba(255,236,190,0.07), transparent 36%),
+    linear-gradient(345deg, rgba(255,255,255,0.03), transparent 48%),
+    var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 236, 190, 0.20),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    0 14px 40px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 236, 190, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 #settings.glass,
 #onboard.glass,
@@ -1551,7 +1552,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  background: rgba(10, 12, 18, 0.32);
+  background: rgba(10, 12, 18, 0.86);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   border: 1px solid var(--bd-hair);

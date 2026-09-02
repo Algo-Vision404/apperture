@@ -52,3 +52,9 @@ test('listen does not auto-collapse panel unless stealth auto-collapse is explic
   assert.match(js, /settings\.stealthAutoCollapse !== true/);
   assert.match(js, /settings\.stealthAutoCollapse === true/);
 });
+
+test('panel glass is opaque enough to read on light desktops', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../renderer/styles.css'), 'utf8');
+  assert.match(css, /--glass:\s*rgba\(10,\s*12,\s*18,\s*0\.(8[0-9]|9[0-9]|1\.0)\)/);
+  assert.doesNotMatch(css, /#panel\.glass[\s\S]{0,280}rgba\(10,\s*12,\s*18,\s*0\.0[0-9]\)/);
+});
