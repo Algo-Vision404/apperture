@@ -1804,6 +1804,7 @@
     const st = await cue.captureState();
     $('#live-dot').classList.toggle('off', !st.active);
     $('#stop-btn').classList.toggle('active', st.active);
+    setListenIcon(!!st.active);
     if (!settings.onboarded) showOnboard();
   })();
 })();
