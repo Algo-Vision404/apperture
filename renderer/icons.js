@@ -124,11 +124,30 @@
     'listen-active': null
   };
 
+  // apperture mark — "Open Iris"
+  // Geometric six-blade aperture (lens opening) + twin-spark core for the double-p.
   const LOGO =
     '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" xmlns="' + NS + '" aria-hidden="true">' +
-    '<circle cx="12" cy="4.95" r="2.45" fill="currentColor"/>' +
-    '<rect x="10.25" y="7" width="3.5" height="10.9" rx="1.75" fill="currentColor"/>' +
-    '<path d="M6.9 19.55h10.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" opacity="0.45"/>' +
+    '<defs>' +
+      '<clipPath id="ap-pupil"><circle cx="12" cy="12" r="3.4"/></clipPath>' +
+    '</defs>' +
+    // Outer ring
+    '<circle cx="12" cy="12" r="9.35" stroke="currentColor" stroke-width="1.4" opacity="0.88"/>' +
+    // Six triangular iris blades around the pupil
+    '<g fill="currentColor">' +
+      '<path d="M12 3.1 15.05 8.55 12 9.7 8.95 8.55Z"/>' +
+      '<path d="M20.9 12 15.45 15.05 14.3 12 15.45 8.95Z"/>' +
+      '<path d="M12 20.9 8.95 15.45 12 14.3 15.05 15.45Z"/>' +
+      '<path d="M3.1 12 8.55 8.95 9.7 12 8.55 15.05Z"/>' +
+      '<path d="M18.85 5.15 15.55 9.85 13.85 8.65 16.45 4.55Z"/>' +
+      '<path d="M5.15 18.85 8.45 14.15 10.15 15.35 7.55 19.45Z"/>' +
+    '</g>' +
+    // Open center (aperture)
+    '<circle cx="12" cy="12" r="3.55" fill="currentColor" opacity="0.16"/>' +
+    '<circle cx="12" cy="12" r="2.15" fill="currentColor"/>' +
+    // Twin sparks — double-p signature inside the pupil
+    '<circle cx="10.7" cy="12" r="0.62" fill="currentColor" opacity="0.4"/>' +
+    '<circle cx="13.3" cy="12" r="0.62" fill="currentColor" opacity="0.4"/>' +
     '</svg>';
 
   function listenActive(size) {

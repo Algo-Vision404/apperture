@@ -10,7 +10,7 @@
   function setListenIcon(active) {
     $('#stop-btn').innerHTML = icon(active ? 'listen-active' : 'mic', { size: 15 });
   }
-  $('#logo-btn').innerHTML = icon('logo', { size: 17 });
+  $('#logo-btn').innerHTML = icon('logo', { size: 18 });
   $('.tb-hide .chev').innerHTML = icon('chevron-down', { size: 14, stroke: 2 });
   const guideBtn = document.getElementById('guide-btn');
   if (guideBtn) guideBtn.innerHTML = icon('book', { size: 15 });
@@ -116,7 +116,7 @@
           '<strong>Assist</strong><span>' + esc(assistHint) + ' — scan screen</span>' +
         '</button>' +
         '<button type="button" class="me-card" data-empty-action="settings">' +
-          '<strong>Settings</strong><span>Keys, audio, stealth</span>' +
+          '<strong>Settings</strong><span>Gear icon · keys &amp; stealth</span>' +
         '</button>' +
       '</div>';
     messages.appendChild(empty);
