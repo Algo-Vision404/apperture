@@ -281,3 +281,67 @@ test('createLLM: leaves a user-chosen current Gemini model alone', () => {
   }));
   assert.equal(llm.model, 'gemini-3.5-flash');
 });
+
+// ---- OpenRouter -----------------------------------------------------------
+const {
+  OPENROUTER_BASE_URL,
+  OPENROUTER_DEFAULT_MODEL,
+  resolveApiKey
+} = require('../src/llm');
+
+function openrouterSettings(overrides) {
+  return Object.assign({
+    provider: 'openrouter',
+    smart: false,
+    apiKeys: { openrouter: 'sk-or-v1-test' },
+    models: {
+      openrouter: {
+        fast: OPENROUTER_DEFAULT_MODEL,
+        smart: OPENROUTER_DEFAULT_MODEL
+      }
+    }
+  }, overrides || {});
+}
+
+test('routes OpenRouter through openrouter.ai with ranking headers and reasoning', async () => {
+  const llm = createLLM(openrouterSettings());
+  assert.equal(llm.ready, true);
+  assert.equal(llm.model, OPENROUTER_DEFAULT_MODEL);
+
+  await llm.stream({ system: '', turns: [{ role: 'user', text: 'hi' }], onToken: () => {} });
+
+  assert.equal(capturedClientOptions.apiKey, 'sk-or-v1-test');
+  assert.equal(capturedClientOptions.baseURL, OPENROUTER_BASE_URL);
+  assert.equal(capturedClientOptions.defaultHeaders['X-Title'], 'cue');
+  assert.equal(capturedClientOptions.defaultHeaders['HTTP-Referer'], 'https://github.com/Blueturboguy07/cue');
+  assert.equal(capturedCompletionRequest.model, OPENROUTER_DEFAULT_MODEL);
+  assert.equal(capturedCompletionRequest.stream, true);
+  assert.deepEqual(capturedCompletionRequest.reasoning, { effort: 'medium' });
+});
+
+test('OpenRouter falls back to OPENROUTER_API_KEY from the environment', () => {
+  const prev = process.env.OPENROUTER_API_KEY;
+  process.env.OPENROUTER_API_KEY = 'sk-or-v1-from-env';
+  try {
+    const llm = createLLM(openrouterSettings({ apiKeys: { openrouter: '' } }));
+    assert.equal(llm.ready, true);
+    assert.equal(llm.apiKey, 'sk-or-v1-from-env');
+    assert.equal(resolveApiKey('openrouter', { openrouter: '' }), 'sk-or-v1-from-env');
+  } finally {
+    if (prev === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = prev;
+  }
+});
+
+test('OpenRouter reports a clear error when no key is configured', () => {
+  const prev = process.env.OPENROUTER_API_KEY;
+  delete process.env.OPENROUTER_API_KEY;
+  try {
+    const llm = createLLM(openrouterSettings({ apiKeys: { openrouter: '' } }));
+    assert.equal(llm.ready, false);
+    assert.match(llm.configurationError, /OPENROUTER_API_KEY/);
+  } finally {
+    if (prev === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = prev;
+  }
+});

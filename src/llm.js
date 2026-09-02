@@ -4,6 +4,13 @@
 const { createCompatibleClientOptions } = require('./openai-compatible');
 
 const CUSTOM_PROVIDER = 'custom';
+const OPENROUTER_PROVIDER = 'openrouter';
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OPENROUTER_DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+const OPENROUTER_HEADERS = {
+  'HTTP-Referer': 'https://github.com/Blueturboguy07/cue',
+  'X-Title': 'cue'
+};
 // gemini-2.0-flash was Google's default here until it was deprecated (Feb 2026)
 // and fully retired (Mar 3 2026) — every request against it now 404s with a
 // generic "exception parsing response" body. gemini-2.5-flash is the model
@@ -17,7 +24,8 @@ const DEFAULT_MODELS = {
   ollama: 'llama3.2',
   groq: 'llama-3.1-8b-instant',
   minimax: 'MiniMax-M2.7',
-  azure: 'gpt-4o-mini'
+  azure: 'gpt-4o-mini',
+  openrouter: OPENROUTER_DEFAULT_MODEL
 };
 
 // Gemini model ids that Google has since deprecated/retired. A settings file
@@ -26,7 +34,24 @@ const DEFAULT_MODELS = {
 // otherwise an existing user would keep re-hitting the same 404 forever.
 const DEAD_GEMINI_MODEL_RE = /^gemini-(1\.0|1\.5|2\.0)(?:-|$)/i;
 
-const PROVIDER_LABELS = { azure: 'Azure AI Foundry', openai: 'OpenAI', minimax: 'MiniMax' };
+const PROVIDER_LABELS = {
+  azure: 'Azure AI Foundry',
+  openai: 'OpenAI',
+  minimax: 'MiniMax',
+  openrouter: 'OpenRouter'
+};
+
+function resolveApiKey(provider, keys) {
+  const fromSettings = typeof keys[provider] === 'string' ? keys[provider].trim() : '';
+  if (fromSettings) return fromSettings;
+  if (provider === OPENROUTER_PROVIDER) {
+    const fromEnv = typeof process.env.OPENROUTER_API_KEY === 'string'
+      ? process.env.OPENROUTER_API_KEY.trim()
+      : '';
+    return fromEnv;
+  }
+  return '';
+}
 
 function normalizeProviderName(provider) {
   if (!provider) return 'provider';
@@ -105,9 +130,13 @@ function stripDataUrl(dataUrl) {
   return m ? { mime: m[1], b64: m[2] } : null;
 }
 
-async function streamOpenAI({ apiKey, baseURL, model, system, turns, imageDataUrl, maxTokens, onToken }) {
+async function streamOpenAI({ apiKey, baseURL, model, system, turns, imageDataUrl, maxTokens, onToken, defaultHeaders, extraBody }) {
   const OpenAI = require('openai');
-  const client = new OpenAI(baseURL ? { apiKey, baseURL } : { apiKey });
+  const clientOptions = baseURL ? { apiKey, baseURL } : { apiKey };
+  if (defaultHeaders && typeof defaultHeaders === 'object') {
+    clientOptions.defaultHeaders = defaultHeaders;
+  }
+  const client = new OpenAI(clientOptions);
   const messages = [{ role: 'system', content: system }];
   turns.forEach((t, i) => {
     const last = i === turns.length - 1;
@@ -122,7 +151,11 @@ async function streamOpenAI({ apiKey, baseURL, model, system, turns, imageDataUr
       messages.push({ role: t.role, content: t.text });
     }
   });
-  const stream = await client.chat.completions.create({ model, messages, stream: true, max_tokens: maxTokens });
+  const request = { model, messages, stream: true, max_tokens: maxTokens };
+  if (extraBody && typeof extraBody === 'object') {
+    Object.assign(request, extraBody);
+  }
+  const stream = await client.chat.completions.create(request);
   let full = '';
   for await (const part of stream) {
     const d = part.choices && part.choices[0] && part.choices[0].delta && part.choices[0].delta.content;
@@ -295,7 +328,7 @@ async function streamOllama({ apiKey, model, system, turns, imageDataUrl, maxTok
 function createLLM(settings) {
   const provider = settings.provider;
   const keys = settings.apiKeys || {};
-  let apiKey = keys[provider];
+  let apiKey = resolveApiKey(provider, keys);
   let baseURL = '';
   let configurationError = '';
   const tier = settings.smart ? 'smart' : 'fast';
@@ -321,7 +354,9 @@ function createLLM(settings) {
     }
   } else if (provider !== 'ollama' && !apiKey) {
     // Ollama is a local server: the field holds a URL, and no key is required.
-    configurationError = `Add your ${provider} API key in Settings.`;
+    configurationError = provider === OPENROUTER_PROVIDER
+      ? 'Add your OpenRouter API key in Settings, or set OPENROUTER_API_KEY in the environment.'
+      : `Add your ${provider} API key in Settings.`;
   }
 
   // Azure needs a second credential: the resource endpoint.
@@ -342,6 +377,20 @@ function createLLM(settings) {
       try {
         if (provider === 'openai') return await streamOpenAI(args);
         if (provider === CUSTOM_PROVIDER) return await streamOpenAI(args);
+        if (provider === OPENROUTER_PROVIDER) {
+          return await streamOpenAI({
+            ...args,
+            baseURL: OPENROUTER_BASE_URL,
+            defaultHeaders: OPENROUTER_HEADERS,
+            // Enable thinking tokens on reasoning-capable OpenRouter models (e.g. Nemotron).
+            // Final answer still streams via delta.content; reasoning stays server-side unless excluded.
+            extraBody: {
+              reasoning: {
+                effort: settings.smart ? 'high' : 'medium'
+              }
+            }
+          });
+        }
         if (provider === 'ollama') return await streamOllama(args);
         if (provider === 'groq') return await streamOpenAI({ ...args, baseURL: 'https://api.groq.com/openai/v1' });
         if (provider === 'minimax') return await streamOpenAI({ ...args, baseURL: MINIMAX_BASE_URLS[minimaxRegion] || MINIMAX_BASE_URLS.global_en });
@@ -356,4 +405,12 @@ function createLLM(settings) {
   };
 }
 
-module.exports = { createLLM, formatProviderErrorMessage, isQuotaError, CURRENT_GEMINI_DEFAULT };
+module.exports = {
+  createLLM,
+  formatProviderErrorMessage,
+  isQuotaError,
+  CURRENT_GEMINI_DEFAULT,
+  OPENROUTER_BASE_URL,
+  OPENROUTER_DEFAULT_MODEL,
+  resolveApiKey
+};

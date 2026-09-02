@@ -6,7 +6,7 @@
     provider: 'openai',
     sttProvider: 'auto',
     smart: false,
-    apiKeys: { openai: '', anthropic: '', gemini: '', deepgram: '', custom: '', ollama: '', groq: '', minimax: '', azure: '' },
+    apiKeys: { openai: '', anthropic: '', gemini: '', deepgram: '', custom: '', ollama: '', groq: '', minimax: '', azure: '', openrouter: '' },
     models: {
       openai: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
       anthropic: { fast: 'claude-3-5-haiku-latest', smart: 'claude-3-5-sonnet-latest' },
@@ -15,7 +15,11 @@
       ollama: { fast: 'llama3.2', smart: 'llama3.3' },
       groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },
       minimax: { fast: 'MiniMax-M2.7', smart: 'MiniMax-M3' },
-      azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' }
+      azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
+      openrouter: {
+        fast: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+        smart: 'nvidia/nemotron-3-ultra-550b-a55b:free'
+      }
     },
     resumeText: '',
     jobDescription: '',
@@ -33,8 +37,20 @@
   };
 
   function load() {
-    try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY) || '{}')); }
-    catch (e) { return Object.assign({}, defaults); }
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+      const merged = Object.assign({}, defaults, saved);
+      merged.apiKeys = Object.assign({}, defaults.apiKeys, saved.apiKeys || {});
+      merged.models = Object.assign({}, defaults.models, saved.models || {});
+      for (const provider of Object.keys(defaults.models)) {
+        merged.models[provider] = Object.assign(
+          {},
+          defaults.models[provider],
+          (saved.models && saved.models[provider]) || {}
+        );
+      }
+      return merged;
+    } catch (e) { return Object.assign({}, defaults); }
   }
   function save(s) { localStorage.setItem(KEY, JSON.stringify(s)); return s; }
 
