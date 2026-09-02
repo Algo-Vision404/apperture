@@ -1,0 +1,11 @@
+{
+  "name": "cue",
+  "install": "npm install",
+  "start": "npm run web",
+  "terminals": [
+    {
+      "name": "cue-web",
+      "command": "npm run web"
+    }
+  ]
+}

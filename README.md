@@ -74,6 +74,14 @@ npm start
 
 That's the whole setup on Windows. There's no permission dance — grant the mic when Windows asks and you're done.
 
+### Option C — Browser UI (Cloud Agent / quick preview)
+
+```bash
+npm run web
+```
+
+Opens the real cue renderer at `http://127.0.0.1:43142/` with a local mock of Electron IPC (settings, Assist/Say demo replies, listening toggle). Full screen/mic/STT still need `npm start` (Electron).
+
 To build a standalone app:
 ```bash
 npm run pack        # unpacked app in dist/ (either OS)
