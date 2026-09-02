@@ -673,12 +673,16 @@
   // the user-gesture is fresh for getDisplayMedia (loopback capture needs it).
   $('#stop-btn').addEventListener('click', async () => {
     const turningOn = !$('#stop-btn').classList.contains('active');
-    if (turningOn) {
-      // startSystemAudio may fail (user cancels, no permission) — that's OK,
-      // mic will still work and capture will toggle regardless
+    if (turningOn && !(apperture.isWeb && apperture.usesBrowserSpeech)) {
+      // Electron (and web without Speech API): keep gesture for getDisplayMedia.
       try { await startSystemAudio(); } catch (_) { /* handled inside startSystemAudio */ }
     }
     const active = await apperture.captureToggle();
+    if (turningOn && active && apperture.isWeb && apperture.usesBrowserSpeech) {
+      // Start mic captions first, then optionally prompt for meeting-audio share
+      // without blocking SpeechRecognition behind the picker dialog.
+      startSystemAudio().catch(function () {});
+    }
     if (turningOn && !active) stopSystemAudio();
   });
 
@@ -1032,6 +1036,12 @@
   }
 
   // ---- events from main --------------------------------------------------
+  function shouldStartRendererMic() {
+    // Web + SpeechRecognition: opening getUserMedia steals the mic and captions stay empty.
+    // Electron always needs renderer PCM. Web without Speech API falls back to cloud mic STT.
+    return !(apperture.isWeb && apperture.usesBrowserSpeech);
+  }
+
   apperture.on('capture:state', ({ active, streaming, mode }) => {
     setLiveDotState(active ? 'idle' : 'off');
     $('#stop-btn').classList.toggle('active', active);
@@ -1045,10 +1055,10 @@
     }
     // startSystemAudio() is called directly from the stop-button click handler
     // so that the getDisplayMedia request has a fresh user gesture.
-    // Here we only start the mic (no gesture required) and stop everything on deactivate.
+    // Mic PCM is Electron / cloud-fallback only — skip it when browser speech owns the mic.
     if (active) {
-      startMic();
-      // Don't auto-open sidebar — user can toggle it manually
+      if (shouldStartRendererMic()) startMic();
+      else stopMic();
     } else {
       stopMic();
       stopSystemAudio();
@@ -1057,10 +1067,9 @@
         interimEl.textContent = '';
         interimEl.classList.remove('show');
       }
-      // Don't auto-close sidebar — let user keep it open if they want
+      clearInputInterim();
     }
     updateSttStatus({ active, streaming });
-    if (active) { startMic(); } else { stopMic(); stopSystemAudio(); }
     if (active && mode === 'local') {
       sttState = 'local';
       const label = document.getElementById('stt-status');
@@ -1117,9 +1126,12 @@
     el.textContent = `${label}: ${text}`;
     el.classList.add('show');
     appendTranscriptHistoryTurn(channel, text, true); // update sidebar interim
-    
-    // FIX #12: Show interviewer's interim speech in input area
+
+    // Show live captions in the composer so the ask box reflects what the mic hears.
+    // Them still prefers the real textarea fill on finals; You uses the interim strip.
     if (channel === 'them' && !input.value.trim()) {
+      showInterimInInput(text);
+    } else if (channel === 'you') {
       showInterimInInput(text);
     }
   });
@@ -1234,8 +1246,17 @@
       cancelSoftClear(); // Interviewer is speaking, cancel any pending clear
       autoFillInputFromSTT(text);
     } else {
-      // User spoke — soft clear (don't immediately wipe, wait to see if they're really answering)
-      softClearSTTFill();
+      // Mic (You): show captions in the ask box when it is empty so listening is visible.
+      // If Them already filled a question, keep soft-clear behavior instead of overwriting.
+      if (!input.value.trim() && !inputFromSTT) {
+        input.value = text.trim();
+        syncPlaceholder();
+        updateSendButtonState();
+        showInterimInInput('');
+        clearInputInterim();
+      } else {
+        softClearSTTFill();
+      }
     }
   });
   let statusTimer = null;
@@ -2022,7 +2043,11 @@
     $('#live-dot').classList.toggle('off', !st.active);
     $('#stop-btn').classList.toggle('active', st.active);
     setListenIcon(!!st.active);
-    updateSttStatus({ active: !!st.active, streaming: false });
+    composer.classList.toggle('listening', !!st.active);
+    updateSttStatus({ active: !!st.active, streaming: !!st.active });
+    // If the server was already listening (page refresh), don't open getUserMedia
+    // when browser speech owns the mic — but do refresh the listen UI.
+    if (st.active && shouldStartRendererMic()) startMic();
     if (!settings.onboarded) showOnboard();
   })();
 })();
