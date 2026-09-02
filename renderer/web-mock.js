@@ -67,8 +67,13 @@
     emit('llm:done', {});
   }
 
+  const uaPlat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  const isWin = /win/i.test(uaPlat) || /Windows/i.test(navigator.userAgent || '');
+  const isMacHost = /mac/i.test(uaPlat) && !isWin;
+  const mockPlatform = isWin ? 'win32' : (isMacHost ? 'darwin' : 'linux');
+
   window.cue = {
-    platform: /mac/i.test(navigator.platform) ? 'darwin' : 'linux',
+    platform: mockPlatform,
     settingsGet: async function () { return settings; },
     settingsSet: async function (patch) {
       settings = Object.assign({}, settings, patch || {});
@@ -88,7 +93,9 @@
     whisperModelCancel: async function () { return { ok: true }; },
     whisperModelDelete: async function () { return { ok: true }; },
     whisperModelImport: async function () { return { ok: false, error: 'Use Electron for imports' }; },
-    platformInfo: async function () { return { platform: 'linux', winBuild: 0 }; },
+    platformInfo: async function () {
+      return { platform: mockPlatform, winBuild: isWin ? 22621 : 0 };
+    },
     ask: function (payload) { demoAsk(payload); },
     captureToggle: async function () {
       capturing = !capturing;

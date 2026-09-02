@@ -25,28 +25,28 @@ cue floats a small glass panel on top of everything. It takes **three separate i
 
 | Feature | How to trigger | What it uses |
 |---|---|---|
-| **Assist** | `⌘` `↵` (macOS) or `Ctrl` `Enter` (Windows), configurable | your screen + recent conversation |
-| **What should I say?** | button | meeting audio + your mic |
+| **Assist** | `Ctrl` `Enter` (Windows) · `⌘` `↵` (macOS) | your screen + recent conversation |
+| **What should I say?** | button · `Ctrl` `Shift` `Enter` (Windows) · `⌘` `⇧` `↵` (macOS) | meeting audio + your mic |
 | **Follow-up questions** | button | the whole conversation |
 | **Recap** | button | the whole conversation |
-| **Ask anything** | type + `↵` | your screen + conversation |
-| **Solve a coding problem** | `⌘` `H` (macOS) or `Ctrl` `H` (Windows) | your screen only |
+| **Ask anything** | type + `Enter` | your screen + conversation |
+| **Solve a coding problem** | `Ctrl` `H` (Windows) · `⌘` `H` (macOS) | your screen only |
 | **Smart** toggle | pill in the box | switches to a smarter (slower) model |
 
 It's a copilot for **live meetings** ("what do I say to that?") and **coding problems** (screenshot → full solution), and it's designed to be **invisible in screen shares** so it stays your private assistant.
 
 ### Platform support
 
-|  | macOS | Windows 11 / 10 2004+ |
+|  | Windows 11 / 10 2004+ | macOS |
 |---|---|---|
 | Screen + coding help | ✅ | ✅ |
 | Your mic (the **You** channel) | ✅ | ✅ |
-| Meeting audio (the **Them** channel) | ✅ macOS 14.4+ | ✅ |
-| Hidden from screen shares | ⚠️ best-effort, weaker on macOS 15.4+ | ✅ `WDA_EXCLUDEFROMCAPTURE` |
-| Permissions to grant | Microphone **and** Screen Recording | Microphone only |
+| Meeting audio (the **Them** channel) | ✅ | ✅ macOS 14.4+ |
+| Hidden from screen shares | ✅ `WDA_EXCLUDEFROMCAPTURE` | ⚠️ best-effort, weaker on macOS 15.4+ |
+| Permissions to grant | Microphone only | Microphone **and** Screen Recording |
 
 > [!NOTE]
-> **Meeting audio needs macOS 14.4+.** Capturing the *other* person — what powers **What should I say?**, **Follow-up questions**, and **Recap** — uses system-audio loopback. On Windows that works out of the box. On macOS it relies on ScreenCaptureKit, which cue enables through Chromium's `MacLoopbackAudioForScreenShare` and `MacSckSystemAudioLoopbackOverride` switches; on older macOS the *Them* channel stays silent while your screen and the **You** channel keep working.
+> **Windows is fully supported** — mic, screen, meeting loopback, and screen-share hiding all work there. Meeting audio on macOS needs **14.4+** (ScreenCaptureKit). On older macOS the *Them* channel stays silent while screen and the **You** channel keep working.
 
 ---
 
@@ -192,7 +192,7 @@ cue is an [Electron](https://www.electronjs.org/) app. Everything runs locally e
 **The three inputs are kept completely separate:**
 - **Screen** — captured with Electron's `desktopCapturer` (full-resolution screenshots, taken only when a feature needs one).
 - **Your mic ("You")** — `getUserMedia` → downsampled to 16 kHz audio → transcribed.
-- **Meeting audio ("Them")** — `getDisplayMedia` loopback of system output, kept on its own channel so cue knows *who* said what. Works on Windows out of the box, and on **macOS 14.4+** via ScreenCaptureKit (Chromium loopback flags). Older macOS leaves this channel silent while screen + mic still work.
+- **Meeting audio ("Them")** — `getDisplayMedia` loopback of system output, kept on its own channel so cue knows *who* said what. **Windows:** works out of the box. **macOS 14.4+:** ScreenCaptureKit via Chromium loopback flags. Older macOS leaves this channel silent while screen + mic still work.
 
 Both audio streams are transcribed by the independently selected speech provider (local whisper.cpp, Deepgram, OpenAI, or Gemini) and fed, with an optional screenshot, to your chat model. Responses **stream** into the panel word-by-word.
 
