@@ -78,16 +78,21 @@ module.exports = {
     signExecutable: hasWinCert,
     verifyUpdateCodeSignature: hasWinCert,
   },
-  // A per-user install with a visible directory step: apperture is a personal overlay,
-  // not a machine-wide service, so it should never need an elevation prompt.
+  // Per-machine install: ships Uninstall apperture.exe in the install folder,
+  // registers in Windows Settings > Apps, and can be removed from there.
   nsis: {
     oneClick: false,
-    perMachine: false,
+    perMachine: true,
+    allowElevation: true,
     allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
     shortcutName: "apperture",
+    menuCategory: "apperture",
     uninstallDisplayName: "apperture",
-    // Differential NSIS patches can leave Uninstall apperture.exe corrupted.
+    guid: "7f3c8e2a-4b1d-5a9e-8c6d-0e1f2a3b4c5d",
     differentialPackage: false,
+    include: "build-resources/installer.nsh",
   },
   linux: {
     target: [{ target: "AppImage", arch: ["x64", "arm64"] }],

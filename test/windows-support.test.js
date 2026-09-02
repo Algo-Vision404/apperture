@@ -16,3 +16,19 @@ test('ships every runtime directory in packaged builds', () => {
   assert.ok(builder.files.includes('src/**/*'));
   assert.ok(builder.files.includes('renderer/**/*'));
 });
+
+test('Windows installer registers uninstaller for Settings > Apps', () => {
+  assert.equal(builder.nsis.perMachine, true);
+  assert.equal(builder.nsis.allowElevation, true);
+  assert.equal(builder.nsis.createStartMenuShortcut, true);
+  assert.equal(builder.nsis.menuCategory, 'apperture');
+  assert.equal(builder.nsis.uninstallDisplayName, 'apperture');
+  assert.equal(builder.nsis.include, 'build-resources/installer.nsh');
+  assert.equal(pkg.author, 'apperture');
+  const installerNsh = require('node:fs').readFileSync(
+    require('node:path').join(__dirname, '../build-resources/installer.nsh'),
+    'utf8'
+  );
+  assert.match(installerNsh, /UNINSTALL_FILENAME/);
+  assert.match(installerNsh, /Uninstall \$\{PRODUCT_NAME\}/);
+});
