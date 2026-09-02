@@ -14,6 +14,8 @@ const { createLLM } = require('../src/llm');
 const { MODES, applySmartMode } = require('../src/prompts');
 const { buildInterviewContext, detectCategory } = require('../src/interview-context');
 const { parseDocumentFile } = require('../src/resume');
+const { createSTT } = require('../src/stt');
+const { rms16 } = require('../src/wav');
 const os = require('os');
 const crypto = require('crypto');
 
@@ -236,6 +238,63 @@ const server = http.createServer(async (req, res) => {
 
   if (rel === '/api/capture/state' && method === 'GET') {
     return send(res, 200, JSON.stringify({ active: capturing, streaming: capturing }), MIME['.json']);
+  }
+
+  // Batch STT for browser meeting-audio (Them). Mic uses Web Speech API.
+  if (rel === '/api/stt' && method === 'POST') {
+    try {
+      const body = await readJson(req);
+      const channel = body.channel === 'them' ? 'them' : 'you';
+      const b64 = String(body.pcmBase64 || '');
+      if (!b64) return send(res, 400, JSON.stringify({ error: 'Missing pcmBase64' }), MIME['.json']);
+      const pcm = Buffer.from(b64, 'base64');
+      if (pcm.length < 3200) {
+        return send(res, 200, JSON.stringify({ text: '', skipped: 'too_short' }), MIME['.json']);
+      }
+      if (rms16(pcm) < 180) {
+        return send(res, 200, JSON.stringify({ text: '', skipped: 'silence' }), MIME['.json']);
+      }
+      const settings = store.getSettings();
+      const stt = createSTT(settings);
+      if (!stt.available) {
+        return send(res, 200, JSON.stringify({
+          text: '',
+          available: false,
+          error: 'No cloud transcription key. Add OpenAI (Whisper), Groq, or Gemini in Settings → Audio to transcribe meeting/system audio. Mic captions still use the browser Speech API.'
+        }), MIME['.json']);
+      }
+      const result = await stt.transcribe(pcm);
+      if (result.error) {
+        return send(res, 200, JSON.stringify({
+          text: '',
+          available: true,
+          error: result.error.message || String(result.error),
+          provider: result.error.provider || null
+        }), MIME['.json']);
+      }
+      const text = (result.text || '').trim();
+      if (text && text.length > 1) {
+        transcript.push({ channel, text });
+        if (transcript.length > 80) transcript = transcript.slice(-80);
+      }
+      return send(res, 200, JSON.stringify({
+        text,
+        provider: result.provider || null,
+        available: true,
+        channel
+      }), MIME['.json']);
+    } catch (e) {
+      return send(res, 400, JSON.stringify({ error: e && e.message ? e.message : String(e) }), MIME['.json']);
+    }
+  }
+
+  if (rel === '/api/stt/status' && method === 'GET') {
+    const settings = store.getSettings();
+    const stt = createSTT(settings);
+    return send(res, 200, JSON.stringify({
+      available: stt.available,
+      providers: stt.providers || []
+    }), MIME['.json']);
   }
 
   if (rel === '/api/transcript' && method === 'POST') {

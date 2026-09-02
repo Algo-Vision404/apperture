@@ -1,12 +1,21 @@
 /* apperture web bridge — real backend client (no mock LLM replies).
    Talks to scripts/web-runner.js: live settings + streamed OpenRouter/LLM asks.
-   Listening uses the browser Web Speech API for real-time mic transcription. */
+   Mic captions: browser Web Speech API (You).
+   Meeting/system audio: getDisplayMedia loopback → /api/stt (Them). */
 (function () {
   const listeners = {};
   let capturing = false;
   let recognition = null;
   let transcriptTurns = [];
   let busyAsk = false;
+  let sysChunks = [];
+  let sysBytes = 0;
+  let sysFlushTimer = null;
+  let sysBusy = false;
+  let sysWarnedNoKey = false;
+  const SYS_FLUSH_MS = 2800;
+  const SYS_MIN_BYTES = 16000 * 2 * 1.4; // ~1.4s @ 16 kHz mono int16
+  const SYS_MAX_BYTES = 16000 * 2 * 10;
 
   function emit(ch, data) {
     (listeners[ch] || []).forEach(function (cb) {
@@ -43,16 +52,91 @@
     if (!clean) return;
     transcriptTurns.push({ channel: channel, text: clean });
     if (transcriptTurns.length > 80) transcriptTurns = transcriptTurns.slice(-80);
-    emit('transcript', { turns: transcriptTurns.slice() });
+    emit('transcript', { turns: transcriptTurns.slice(), channel: channel, text: clean });
     emit('stt:final', { channel: channel, text: clean });
     syncTranscript({ channel: channel, text: clean });
+  }
+
+  function abToBase64(ab) {
+    const bytes = new Uint8Array(ab);
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+
+  function concatChunks(chunks) {
+    let total = 0;
+    for (let i = 0; i < chunks.length; i++) total += chunks[i].byteLength;
+    const out = new Uint8Array(total);
+    let off = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      out.set(new Uint8Array(chunks[i]), off);
+      off += chunks[i].byteLength;
+    }
+    return out.buffer;
+  }
+
+  async function flushSystemPcm() {
+    if (sysBusy || !sysChunks.length) return;
+    if (sysBytes < SYS_MIN_BYTES) return;
+    const chunks = sysChunks;
+    sysChunks = [];
+    sysBytes = 0;
+    sysBusy = true;
+    emit('stt:status', { channel: 'them', status: 'transcribing', provider: 'cloud' });
+    try {
+      const pcm = concatChunks(chunks);
+      const result = await api('/api/stt', {
+        method: 'POST',
+        body: JSON.stringify({ channel: 'them', pcmBase64: abToBase64(pcm) })
+      });
+      if (result && result.available === false) {
+        if (!sysWarnedNoKey) {
+          sysWarnedNoKey = true;
+          emit('status', {
+            message: result.error || 'Add OpenAI, Groq, or Gemini in Settings to transcribe meeting audio (Them).'
+          });
+        }
+        emit('stt:status', { channel: 'them', status: 'error' });
+        return;
+      }
+      if (result && result.error) {
+        emit('status', { message: 'Meeting audio STT: ' + result.error });
+        emit('stt:status', { channel: 'them', status: 'error' });
+        return;
+      }
+      if (result && result.text) {
+        pushFinal('them', result.text);
+        emit('stt:status', { channel: 'them', status: 'streaming', provider: result.provider || 'cloud' });
+      } else {
+        emit('stt:status', { channel: 'them', status: 'connected' });
+      }
+    } catch (e) {
+      emit('status', { message: 'Meeting audio transcription failed: ' + (e && e.message ? e.message : String(e)) });
+      emit('stt:status', { channel: 'them', status: 'error' });
+    } finally {
+      sysBusy = false;
+    }
+  }
+
+  function resetSystemPcm() {
+    sysChunks = [];
+    sysBytes = 0;
+    if (sysFlushTimer) {
+      clearInterval(sysFlushTimer);
+      sysFlushTimer = null;
+    }
+    sysBusy = false;
   }
 
   function startSpeechRecognition() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       emit('status', {
-        message: 'This browser has no Speech Recognition API. Listening still captures mic PCM, but live captions need Chrome/Edge — or run Electron for full STT.'
+        message: 'This browser has no Speech Recognition API for the mic. Meeting audio can still use cloud STT if you share system audio and add an OpenAI/Groq/Gemini key.'
       });
       emit('stt:status', { status: 'connected' });
       return;
@@ -67,13 +151,13 @@
     rec.interimResults = true;
     rec.lang = 'en-US';
     rec.onstart = function () {
-      emit('stt:status', { status: 'connected' });
+      emit('stt:status', { channel: 'you', status: 'connected' });
     };
     rec.onerror = function (ev) {
       const err = (ev && ev.error) || 'speech error';
       if (err === 'not-allowed') {
         emit('status', { message: 'Microphone permission denied — allow mic access to listen.' });
-        emit('stt:status', { status: 'error' });
+        emit('stt:status', { channel: 'you', status: 'error' });
       } else if (err !== 'aborted' && err !== 'no-speech') {
         emit('status', { message: 'Speech recognition: ' + err });
       }
@@ -109,7 +193,7 @@
     const rec = recognition;
     recognition = null;
     try { rec.onend = null; rec.stop(); } catch (_) {}
-    emit('stt:status', { status: 'disconnected' });
+    emit('stt:status', { channel: 'you', status: 'disconnected' });
   }
 
   async function streamAsk(payload) {
@@ -121,48 +205,38 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: (payload && payload.mode) || 'ask',
-          text: (payload && payload.text) || '',
+          mode: payload && payload.mode,
+          text: payload && payload.text,
           transcript: transcriptTurns
         })
       });
       if (!res.ok) {
-        let message = 'Ask failed (' + res.status + ')';
+        let msg = res.statusText;
         try {
           const j = await res.json();
-          if (j && j.error) message = j.error;
+          if (j && j.error) msg = j.error;
         } catch (_) {}
-        emit('llm:error', { message: message });
+        emit('llm:error', { message: msg || ('HTTP ' + res.status) });
         return;
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buf = '';
       while (true) {
-        const { done, value } = await reader.read();
+        const { value, done } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split('\n\n');
+        buf = parts.pop() || '';
         for (let i = 0; i < parts.length; i++) {
-          const block = parts[i].trim();
-          if (!block.startsWith('data:')) continue;
-          const json = block.replace(/^data:\s*/, '');
-          let msg;
-          try { msg = JSON.parse(json); } catch (_) { continue; }
-          if (msg.type === 'start') {
-            emit('llm:start', {
-              userBubble: msg.userBubble,
-              small: !!msg.small,
-              category: msg.category || null
-            });
-          } else if (msg.type === 'token') {
-            emit('llm:token', { text: msg.text || '' });
-          } else if (msg.type === 'done') {
-            emit('llm:done', {});
-          } else if (msg.type === 'error') {
-            emit('llm:error', { message: msg.message || 'LLM error' });
-          }
+          const line = parts[i].trim();
+          if (!line.startsWith('data:')) continue;
+          let evt;
+          try { evt = JSON.parse(line.slice(5).trim()); } catch (_) { continue; }
+          if (evt.type === 'start') emit('llm:start', evt);
+          else if (evt.type === 'token') emit('llm:token', { text: evt.text || '' });
+          else if (evt.type === 'done') emit('llm:done', {});
+          else if (evt.type === 'error') emit('llm:error', { message: evt.message || 'error' });
         }
       }
     } catch (e) {
@@ -189,7 +263,7 @@
           available: false,
           version: '',
           target: 'web',
-          message: 'Local Whisper needs the Electron app. Browser listening uses live Speech Recognition + your cloud LLM.'
+          message: 'Local Whisper needs the Electron app. Browser listening uses live Speech Recognition for the mic, and cloud STT for meeting audio.'
         },
         models: [],
         selectedModelId: 'base.en',
@@ -209,8 +283,25 @@
       const st = await api('/api/capture/toggle', { method: 'POST', body: '{}' });
       capturing = !!st.active;
       emit('capture:state', { active: capturing, streaming: capturing });
-      if (capturing) startSpeechRecognition();
-      else stopSpeechRecognition();
+      if (capturing) {
+        startSpeechRecognition();
+        if (!sysFlushTimer) sysFlushTimer = setInterval(function () { flushSystemPcm(); }, SYS_FLUSH_MS);
+        api('/api/stt/status').then(function (info) {
+          if (!info || !info.available) {
+            emit('status', {
+              message: 'Mic captions are on. For meeting audio (Them), allow screen share with audio, and add an OpenAI, Groq, or Gemini key in Settings → Audio.'
+            });
+          } else {
+            emit('status', {
+              message: 'Listening: mic → You (browser). Share a tab/window with audio for Them (' + (info.providers || []).join('/') + ').'
+            });
+          }
+        }).catch(function () {});
+      } else {
+        stopSpeechRecognition();
+        await flushSystemPcm();
+        resetSystemPcm();
+      }
       return capturing;
     },
     captureState: async function () {
@@ -219,7 +310,14 @@
       return { active: capturing, streaming: capturing };
     },
     micPcm: function () {},
-    systemPcm: function () {},
+    systemPcm: function (arrayBuffer) {
+      if (!capturing || !arrayBuffer) return;
+      const copy = arrayBuffer.slice ? arrayBuffer.slice(0) : arrayBuffer;
+      sysChunks.push(copy);
+      sysBytes += copy.byteLength || 0;
+      if (!sysFlushTimer) sysFlushTimer = setInterval(function () { flushSystemPcm(); }, SYS_FLUSH_MS);
+      if (sysBytes >= SYS_MAX_BYTES) flushSystemPcm();
+    },
     setIgnoreMouse: function () {},
     dragStart: function (screenX, screenY) {
       const app = document.getElementById('app');
@@ -298,24 +396,16 @@
     },
     quit: function () {
       stopSpeechRecognition();
+      resetSystemPcm();
       document.body.innerHTML = '<div style="font:600 18px Outfit,sans-serif;padding:40px;color:#F0D78A;background:#0c0e12;min-height:100vh">apperture web session ended. Refresh to reopen.</div>';
     },
     permissionsCheck: async function () { return { mic: 'granted', screen: 'granted' }; },
     permissionsRequest: async function () { return true; },
     permissionsContinue: function () {},
-    log: function (msg) { console.log('[apperture]', msg); },
+    log: function (msg) { try { console.log('[apperture]', msg); } catch (_) {} },
     on: function (channel, cb) {
-      (listeners[channel] = listeners[channel] || []).push(cb);
+      if (!listeners[channel]) listeners[channel] = [];
+      listeners[channel].push(cb);
     }
   };
-
-  // Surface readiness early for the empty state.
-  api('/api/health').then(function (h) {
-    if (h && !h.ready) {
-      emit('status', {
-        message: h.configurationError
-          || 'Add an OpenRouter key in Settings, or set OPENROUTER_API_KEY, then try Assist.'
-      });
-    }
-  }).catch(function () {});
 })();
