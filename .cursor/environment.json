@@ -5,7 +5,14 @@
   "terminals": [
     {
       "name": "cue-web",
-      "command": "npm run web"
+      "command": "npm run web",
+      "description": "cue browser UI on port 43142"
+    }
+  ],
+  "ports": [
+    {
+      "name": "cue",
+      "port": 43142
     }
   ]
 }

@@ -9,7 +9,7 @@ const path = require('path');
 const { URL } = require('url');
 
 const PORT = Number(process.env.CUE_WEB_PORT || 43142);
-const HOST = process.env.CUE_WEB_HOST || '127.0.0.1';
+const HOST = process.env.CUE_WEB_HOST || '0.0.0.0';
 const ROOT = path.join(__dirname, '..', 'renderer');
 
 const MIME = {
