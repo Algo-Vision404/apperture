@@ -5,7 +5,7 @@ const { normalizeBaseUrl } = require('./openai-compatible');
 
 const MAX_AI_RULES_CHARS = 2000;
 const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
-const OPENROUTER_SMART_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+const OPENROUTER_SMART_MODEL = 'minimax/minimax-m2.7:free';
 const DATA_PATH = process.env.APPERTURE_DATA_PATH
   || path.join(process.env.HOME || '/tmp', '.apperture-web', 'apperture-data.json');
 
@@ -74,6 +74,17 @@ function ensureDir(filePath) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
 
+function migrateOpenRouterModels(settings) {
+  const o = settings && settings.models && settings.models.openrouter;
+  if (!o || typeof o !== 'object') return settings;
+  // Previous Smart default (Nemotron Super) was accurate but very slow to first token.
+  if (!o.smart || o.smart === o.fast || o.smart === OPENROUTER_DEFAULT_MODEL
+      || /^nvidia\/nemotron-3-super-120b-a12b:free$/i.test(o.smart)) {
+    o.smart = OPENROUTER_SMART_MODEL;
+  }
+  return settings;
+}
+
 function load() {
   if (data) return data;
   try {
@@ -81,6 +92,7 @@ function load() {
   } catch {
     data = deepMerge(DEFAULTS, {});
   }
+  data = migrateOpenRouterModels(data);
   return data;
 }
 

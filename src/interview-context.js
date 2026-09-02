@@ -198,10 +198,19 @@ function buildInterviewContext(settings, mode, transcript, userText) {
 
   const blocks = [];
 
-  // Résumé grounding — only when the Resume option is on and text is loaded
+  // Résumé grounding — only when the Resume option is on and text is loaded.
+  // Keep a large budget for experience/behavioral asks; trim hard for
+  // technical/general questions so the model isn't drowning in unused context
+  // (large prompts are a common cause of slow first tokens).
   if (useResume && hasResume) {
-    // Generous budget so imported PDFs keep real experience bullets intact
-    const resumeLimit = 9000;
+    const resumeLimit =
+      category === 'experience' || category === 'behavioral' || category === 'motivation' || category === 'situational'
+        ? 9000
+        : category === 'technical'
+          ? 1800
+          : category === 'compensation' || category === 'closing'
+            ? 600
+            : 2200; // general / unknown
     const rb = buildResumeBlock(resume, resumeLimit);
     if (rb) {
       blocks.push(

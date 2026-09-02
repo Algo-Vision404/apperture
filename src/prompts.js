@@ -50,15 +50,15 @@ function applyRules(prompt, aiRules, mode) {
 function applySmartMode(prompt, smart, mode) {
   if (!smart || mode === 'leetcode') return prompt;
   return prompt +
-    '\n\nSmart mode is ON: prefer depth and precision over brevity. ' +
-    'Structure the answer clearly; include concrete details, tradeoffs, and examples when useful. ' +
-    'Do not pad with filler or repeat the question.';
+    '\n\nSmart mode is ON: be accurate and concrete, but stay concise. ' +
+    'Lead with the answer in the first sentence; add only the detail that helps. Prefer 3–8 short sentences or tight bullets.';
 }
 
 const BASE_RULES =
   'Always respond in clear, natural English. Never switch to Hindi or any other language unless the user explicitly asks for it. ' +
   'Answer directly in plain text. Never call tools, browse the web, or emit function/tool markup ' +
-  '(no <|tool_call_start|>, no google(...), no XML/JSON tool envelopes). apperture has no tools — you are the answer. ';
+  '(no <|tool_call_start|>, no google(...), no XML/JSON tool envelopes). apperture has no tools — you are the answer. ' +
+  'Be concise: lead with the answer, keep replies short unless the user asks for depth. ';
 
 const MODES = {
 
@@ -166,7 +166,7 @@ const MODES = {
 
   // ── Ask: free-form question ────────────────────────────────────────────────
   ask: {
-    needsScreen: true,
+    needsScreen: false,
     userBubble: null,
     small: false,
     resumeMode: 'ask',

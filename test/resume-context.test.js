@@ -152,6 +152,20 @@ test('buildInterviewContext: useResume true answers from résumé', () => {
   assert.ok(ctx.includes('PayCo'));
 });
 
+test('buildInterviewContext: technical asks get a trimmed résumé budget', () => {
+  const longResume = 'A'.repeat(5000) + '\nPython expert at PayCo\n' + 'B'.repeat(5000);
+  const ctx = buildInterviewContext(
+    { ...fullSettings, useResume: true, resumeText: longResume },
+    'ask',
+    [],
+    'Explain how a hash map works and its average complexity.'
+  );
+  assert.ok(ctx !== null);
+  assert.ok(ctx.includes('Résumé grounding (ON)'));
+  // Technical category should not ship the full 10k+ résumé blob.
+  assert.ok(ctx.length < 4500, 'technical context should stay lean for latency');
+});
+
 test('detectCategory: ask-box text can classify experience questions', () => {
   assert.equal(
     detectCategory([], 'Walk me through your resume and tell me about your experience at PayCo.'),

@@ -9,16 +9,17 @@ const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 // openrouter/free sometimes routes to agentic models that emit tool-call markup
 // instead of answers. Prefer a concrete chat model; keep free fallbacks.
 const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
-// Distinct from the Fast default — Smart must actually switch models.
-const OPENROUTER_SMART_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+// Prefer a fast free chat model for Smart — Nemotron Super with high reasoning
+// often spends many seconds "thinking" before the first visible token.
+const OPENROUTER_SMART_MODEL = 'minimax/minimax-m2.7:free';
 const OPENROUTER_FALLBACK_MODELS = [
   'minimax/minimax-m2.7:free',
-  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-31b-it:free',
   'openrouter/free'
 ];
 const OPENROUTER_SMART_FALLBACK_MODELS = [
-  'minimax/minimax-m2.7:free',
   'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
   'openrouter/free'
 ];
 const OPENROUTER_HEADERS = {
@@ -419,9 +420,16 @@ function createLLM(settings) {
   // Older builds set Fast and Smart to the same Gemma free id, so the Smart
   // toggle was a no-op. When Smart is on and the smart slot is still that
   // Fast default (or empty), upgrade to the stronger free model.
+  // Also migrate the previous Smart default (Nemotron Super) which is often
+  // slow because of reasoning tokens before the first visible reply.
   if (provider === OPENROUTER_PROVIDER && settings.smart) {
     const fastId = (models[provider] || {}).fast || OPENROUTER_DEFAULT_MODEL;
-    if (!model || model === OPENROUTER_DEFAULT_MODEL || model === fastId) {
+    if (
+      !model ||
+      model === OPENROUTER_DEFAULT_MODEL ||
+      model === fastId ||
+      /^nvidia\/nemotron-3-super-120b-a12b:free$/i.test(model)
+    ) {
       model = OPENROUTER_SMART_MODEL;
     }
   }
@@ -457,7 +465,8 @@ function createLLM(settings) {
   }
 
   const ready = !configurationError && !!model;
-  const maxTokens = settings.smart ? 2200 : 800;
+  // Keep caps tight so streams finish quickly; Smart still gets more room.
+  const maxTokens = settings.smart ? 900 : 420;
 
   return {
     provider, model, apiKey, baseURL,
@@ -474,15 +483,18 @@ function createLLM(settings) {
           const pool = settings.smart ? OPENROUTER_SMART_FALLBACK_MODELS : OPENROUTER_FALLBACK_MODELS;
           const fallbacks = pool
             .filter((id) => id !== model)
-            .slice(0, 3);
+            .slice(0, 2);
           const extraBody = {
             models: fallbacks,
+            // Prefer low-latency providers on free routes.
+            provider: { sort: 'latency' },
             // apperture never runs tools — stop agentic free models from emitting google(...) etc.
             tool_choice: 'none'
           };
-          // Reasoning only on models that advertise it — free-router fallbacks often do not.
-          if (/nemotron|reasoning/i.test(model)) {
-            extraBody.reasoning = { effort: settings.smart ? 'high' : 'medium' };
+          // Reasoning models can sit silent for a long time before the first token.
+          // Only enable light reasoning in Smart mode, never on Fast.
+          if (settings.smart && /nemotron|reasoning/i.test(model)) {
+            extraBody.reasoning = { effort: 'low' };
           }
           return await streamOpenAI({
             ...args,

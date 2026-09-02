@@ -587,11 +587,11 @@
       : (m.fast || 'fast model');
     // Reflect OpenRouter auto-upgrade when Fast/Smart were stuck on the same id
     let label = llmPreview;
-    if (settings.provider === 'openrouter' && settings.smart && (!m.smart || m.smart === m.fast || m.smart === 'google/gemma-4-31b-it:free')) {
-      label = 'nvidia/nemotron-3-super-120b-a12b:free';
+    if (settings.provider === 'openrouter' && settings.smart && (!m.smart || m.smart === m.fast || m.smart === 'google/gemma-4-31b-it:free' || m.smart === 'nvidia/nemotron-3-super-120b-a12b:free')) {
+      label = 'minimax/minimax-m2.7:free';
     }
     showStatus(settings.smart
-      ? 'Smart on — using ' + label + ' (deeper answers)'
+      ? 'Smart on — using ' + label
       : 'Fast mode — using ' + (m.fast || 'fast model'));
   });
 
@@ -1975,8 +1975,8 @@
     // Heal sticky OpenRouter Fast===Smart Gemma so Smart actually switches models
     if (settings.provider === 'openrouter' && settings.models && settings.models.openrouter) {
       const o = settings.models.openrouter;
-      if (!o.smart || o.smart === o.fast || o.smart === 'google/gemma-4-31b-it:free') {
-        o.smart = 'nvidia/nemotron-3-super-120b-a12b:free';
+      if (!o.smart || o.smart === o.fast || o.smart === 'google/gemma-4-31b-it:free' || o.smart === 'nvidia/nemotron-3-super-120b-a12b:free') {
+        o.smart = 'minimax/minimax-m2.7:free';
         settings = await apperture.settingsSet({ models: settings.models });
       }
     }

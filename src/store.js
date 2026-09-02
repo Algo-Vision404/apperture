@@ -58,7 +58,7 @@ const DEFAULTS = {
     azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     openrouter: {
       fast: 'google/gemma-4-31b-it:free',
-      smart: 'nvidia/nemotron-3-super-120b-a12b:free'
+      smart: 'minimax/minimax-m2.7:free'
     }
   }
 };
@@ -86,6 +86,14 @@ function load() {
   try { data = deepMerge(DEFAULTS, JSON.parse(fs.readFileSync(FILE, 'utf8'))); }
   catch { data = deepMerge(DEFAULTS, {}); }
 
+  // Heal sticky OpenRouter Smart model that used the slow Nemotron Super default.
+  const o = data.models && data.models.openrouter;
+  if (o && typeof o === 'object') {
+    if (!o.smart || o.smart === o.fast || o.smart === 'google/gemma-4-31b-it:free'
+        || /^nvidia\/nemotron-3-super-120b-a12b:free$/i.test(o.smart)) {
+      o.smart = 'minimax/minimax-m2.7:free';
+    }
+  }
 
   return data;
 }

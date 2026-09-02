@@ -200,7 +200,8 @@
     if (busyAsk) return;
     busyAsk = true;
     try {
-      await syncTranscript({ turns: transcriptTurns });
+      // Don't block the ask on transcript sync — the request body already includes turns.
+      void syncTranscript({ turns: transcriptTurns });
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

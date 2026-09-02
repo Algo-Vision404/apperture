@@ -316,7 +316,7 @@ test('routes OpenRouter through openrouter.ai with free-router fallbacks', async
   assert.equal(capturedCompletionRequest.reasoning, undefined);
 });
 
-test('OpenRouter Smart toggle upgrades identical Fast/Smart Gemma to Nemotron Super', async () => {
+test('OpenRouter Smart toggle upgrades identical Fast/Smart Gemma to MiniMax', async () => {
   const stuck = createLLM(openrouterSettings({
     smart: true,
     models: {
@@ -331,11 +331,12 @@ test('OpenRouter Smart toggle upgrades identical Fast/Smart Gemma to Nemotron Su
 
   await stuck.stream({ system: '', turns: [], onToken: () => {} });
   assert.equal(capturedCompletionRequest.model, OPENROUTER_SMART_MODEL);
-  assert.deepEqual(capturedCompletionRequest.reasoning, { effort: 'high' });
+  assert.equal(capturedCompletionRequest.reasoning, undefined);
+  assert.equal(capturedCompletionRequest.provider.sort, 'latency');
   assert.ok(capturedCompletionRequest.models.includes('google/gemma-4-31b-it:free'));
 });
 
-test('OpenRouter migrates legacy free-router / Nvidia Ultra defaults and enables reasoning for Nemotron', async () => {
+test('OpenRouter migrates legacy free-router / Nvidia Ultra / Nemotron Super Smart defaults', async () => {
   const llm = createLLM(openrouterSettings({
     models: {
       openrouter: {
@@ -357,15 +358,18 @@ test('OpenRouter migrates legacy free-router / Nvidia Ultra defaults and enables
   assert.equal(ultra.model, OPENROUTER_DEFAULT_MODEL);
 
   const nemo = createLLM(openrouterSettings({
+    smart: true,
     models: {
       openrouter: {
-        fast: 'nvidia/nemotron-3-super-120b-a12b:free',
+        fast: OPENROUTER_DEFAULT_MODEL,
         smart: 'nvidia/nemotron-3-super-120b-a12b:free'
       }
     }
   }));
+  // Previous Smart default is migrated to the faster MiniMax smart model
+  assert.equal(nemo.model, OPENROUTER_SMART_MODEL);
   await nemo.stream({ system: '', turns: [], onToken: () => {} });
-  assert.deepEqual(capturedCompletionRequest.reasoning, { effort: 'medium' });
+  assert.equal(capturedCompletionRequest.reasoning, undefined);
 });
 
 test('OpenRouter falls back to OPENROUTER_API_KEY from the environment', () => {
