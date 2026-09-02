@@ -5,6 +5,7 @@ const { normalizeBaseUrl } = require('./openai-compatible');
 
 const MAX_AI_RULES_CHARS = 2000;
 const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
+const OPENROUTER_SMART_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 const DATA_PATH = process.env.APPERTURE_DATA_PATH
   || path.join(process.env.HOME || '/tmp', '.apperture-web', 'apperture-data.json');
 
@@ -48,7 +49,7 @@ const DEFAULTS = {
     azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     openrouter: {
       fast: OPENROUTER_DEFAULT_MODEL,
-      smart: OPENROUTER_DEFAULT_MODEL
+      smart: OPENROUTER_SMART_MODEL
     }
   }
 };

@@ -32,6 +32,15 @@ function applyRules(prompt, aiRules, mode) {
   return appendAiRules(prompt, aiRules);
 }
 
+/** Extra depth instructions when the Smart toggle is on. */
+function applySmartMode(prompt, smart, mode) {
+  if (!smart || mode === 'leetcode') return prompt;
+  return prompt +
+    '\n\nSmart mode is ON: prefer depth and precision over brevity. ' +
+    'Structure the answer clearly; include concrete details, tradeoffs, and examples when useful. ' +
+    'Do not pad with filler or repeat the question.';
+}
+
 const BASE_RULES =
   'Always respond in clear, natural English. Never switch to Hindi or any other language unless the user explicitly asks for it. ' +
   'Answer directly in plain text. Never call tools, browse the web, or emit function/tool markup ' +
@@ -211,4 +220,4 @@ const MODES = {
   }
 };
 
-module.exports = { MODES, formatTranscript };
+module.exports = { MODES, formatTranscript, applySmartMode };

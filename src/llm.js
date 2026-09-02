@@ -9,9 +9,16 @@ const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 // openrouter/free sometimes routes to agentic models that emit tool-call markup
 // instead of answers. Prefer a concrete chat model; keep free fallbacks.
 const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
+// Distinct from the Fast default — Smart must actually switch models.
+const OPENROUTER_SMART_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 const OPENROUTER_FALLBACK_MODELS = [
   'minimax/minimax-m2.7:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
+  'openrouter/free'
+];
+const OPENROUTER_SMART_FALLBACK_MODELS = [
+  'minimax/minimax-m2.7:free',
+  'google/gemma-4-31b-it:free',
   'openrouter/free'
 ];
 const OPENROUTER_HEADERS = {
@@ -407,9 +414,22 @@ function createLLM(settings) {
     model = CURRENT_GEMINI_DEFAULT;
   }
   if (provider === OPENROUTER_PROVIDER && LEGACY_OPENROUTER_MODEL_RE.test(model || '')) {
-    model = OPENROUTER_DEFAULT_MODEL;
+    model = settings.smart ? OPENROUTER_SMART_MODEL : OPENROUTER_DEFAULT_MODEL;
   }
-  if (!model) model = DEFAULT_MODELS[provider] || '';
+  // Older builds set Fast and Smart to the same Gemma free id, so the Smart
+  // toggle was a no-op. When Smart is on and the smart slot is still that
+  // Fast default (or empty), upgrade to the stronger free model.
+  if (provider === OPENROUTER_PROVIDER && settings.smart) {
+    const fastId = (models[provider] || {}).fast || OPENROUTER_DEFAULT_MODEL;
+    if (!model || model === OPENROUTER_DEFAULT_MODEL || model === fastId) {
+      model = OPENROUTER_SMART_MODEL;
+    }
+  }
+  if (!model) {
+    model = provider === OPENROUTER_PROVIDER && settings.smart
+      ? OPENROUTER_SMART_MODEL
+      : (DEFAULT_MODELS[provider] || '');
+  }
   const minimaxRegion = settings.minimaxRegion || 'global_en';
   const endpoint = settings.azureEndpoint || '';
 
@@ -437,12 +457,13 @@ function createLLM(settings) {
   }
 
   const ready = !configurationError && !!model;
-  const maxTokens = settings.smart ? 1400 : 700;
+  const maxTokens = settings.smart ? 2200 : 800;
 
   return {
     provider, model, apiKey, baseURL,
     ready,
     configurationError,
+    smart: !!settings.smart,
     async stream(params) {
       if (!ready) throw new Error(configurationError || `Complete the ${provider} provider settings.`);
       const args = { apiKey, baseURL, endpoint, model, maxTokens, ...params, turns: sanitizeTurns(params.turns) };
@@ -450,7 +471,8 @@ function createLLM(settings) {
         if (provider === 'openai') return await streamOpenAI(args);
         if (provider === CUSTOM_PROVIDER) return await streamOpenAI(args);
         if (provider === OPENROUTER_PROVIDER) {
-          const fallbacks = OPENROUTER_FALLBACK_MODELS
+          const pool = settings.smart ? OPENROUTER_SMART_FALLBACK_MODELS : OPENROUTER_FALLBACK_MODELS;
+          const fallbacks = pool
             .filter((id) => id !== model)
             .slice(0, 3);
           const extraBody = {
@@ -491,6 +513,7 @@ module.exports = {
   CURRENT_GEMINI_DEFAULT,
   OPENROUTER_BASE_URL,
   OPENROUTER_DEFAULT_MODEL,
+  OPENROUTER_SMART_MODEL,
   OPENROUTER_FALLBACK_MODELS,
   resolveApiKey
 };

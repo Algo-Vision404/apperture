@@ -11,7 +11,7 @@ const { URL } = require('url');
 
 const store = require('../src/file-store');
 const { createLLM } = require('../src/llm');
-const { MODES } = require('../src/prompts');
+const { MODES, applySmartMode } = require('../src/prompts');
 const { buildInterviewContext, detectCategory } = require('../src/interview-context');
 const { parseDocumentFile } = require('../src/resume');
 const os = require('os');
@@ -132,7 +132,7 @@ async function handleAsk(req, res) {
       ? def.userBubble
       : (mode === 'ask' ? userText : null);
     const category = mode !== 'leetcode' ? detectCategory(transcript, userText) : null;
-    writeSse(res, { type: 'start', userBubble, small: !!def.small, category });
+    writeSse(res, { type: 'start', userBubble, small: !!def.small, category, model: llm.model, smart: !!settings.smart });
 
     if (!llm.ready) {
       const message = llm.configurationError
@@ -142,9 +142,10 @@ async function handleAsk(req, res) {
     }
 
     const contextBlock = buildInterviewContext(settings, mode, transcript, userText);
-    const system = def.buildSystem
+    let system = def.buildSystem
       ? def.buildSystem(contextBlock, settings.aiRules || '')
       : (def.system || '');
+    system = applySmartMode(system, settings.smart, mode);
     const built = def.build({ transcript, userText: userText || '' });
 
     await llm.stream({

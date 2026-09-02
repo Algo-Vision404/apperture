@@ -58,7 +58,7 @@ const DEFAULTS = {
     azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     openrouter: {
       fast: 'google/gemma-4-31b-it:free',
-      smart: 'google/gemma-4-31b-it:free'
+      smart: 'nvidia/nemotron-3-super-120b-a12b:free'
     }
   }
 };

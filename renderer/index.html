@@ -159,9 +159,9 @@
         <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI: https://&lt;resource&gt;.openai.azure.com/openai · AI Foundry: https://&lt;host&gt;.cognitiveservices.azure.com (apperture adds /openai/v1)</span></label>
         <div class="s-field"><span>Endpoint</span><input id="azure-endpoint" type="text" placeholder="https://host.cognitiveservices.azure.com" autocomplete="off" /></div>
 
-        <label class="s-label">Models <span class="s-hint">fast = Smart off · smart = Smart on</span></label>
-        <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" /></div>
-        <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" /></div>
+        <label class="s-label">Models <span class="s-hint">Fast = Smart off · Smart = Smart on (must differ)</span></label>
+        <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" placeholder="e.g. google/gemma-4-31b-it:free" /></div>
+        <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" placeholder="e.g. nvidia/nemotron-3-super-120b-a12b:free" /></div>
 
         <label class="s-label">Assistant access <span class="s-hint">programs allowed to see what apperture is doing</span></label>
         <div class="s-callers" id="applink-callers"></div>

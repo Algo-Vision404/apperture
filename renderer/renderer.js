@@ -574,12 +574,25 @@
     sendBtn.title = `Send · ${forceKey} to force answer`;
   }
 
-  // Smart toggle
+  // Smart toggle — switches Fast ↔ Smart model tier
   const smartBtn = $('#smart-toggle');
   smartBtn.addEventListener('click', async () => {
     settings.smart = !settings.smart;
     smartBtn.classList.toggle('on', settings.smart);
     await apperture.settingsSet({ smart: settings.smart });
+    updateSmartTooltip();
+    const m = (settings.models && settings.models[settings.provider]) || {};
+    const llmPreview = settings.smart
+      ? (m.smart && m.smart !== m.fast ? m.smart : 'smarter model')
+      : (m.fast || 'fast model');
+    // Reflect OpenRouter auto-upgrade when Fast/Smart were stuck on the same id
+    let label = llmPreview;
+    if (settings.provider === 'openrouter' && settings.smart && (!m.smart || m.smart === m.fast || m.smart === 'google/gemma-4-31b-it:free')) {
+      label = 'nvidia/nemotron-3-super-120b-a12b:free';
+    }
+    showStatus(settings.smart
+      ? 'Smart on — using ' + label + ' (deeper answers)'
+      : 'Fast mode — using ' + (m.fast || 'fast model'));
   });
 
   // Resume grounding toggle — when on, answers pull facts from the saved résumé
@@ -1959,6 +1972,14 @@
   // ---- boot --------------------------------------------------------------
   (async function boot() {
     settings = await apperture.settingsGet();
+    // Heal sticky OpenRouter Fast===Smart Gemma so Smart actually switches models
+    if (settings.provider === 'openrouter' && settings.models && settings.models.openrouter) {
+      const o = settings.models.openrouter;
+      if (!o.smart || o.smart === o.fast || o.smart === 'google/gemma-4-31b-it:free') {
+        o.smart = 'nvidia/nemotron-3-super-120b-a12b:free';
+        settings = await apperture.settingsSet({ models: settings.models });
+      }
+    }
     const platformInfo = await apperture.platformInfo();
 
     // R4: shortcut hints

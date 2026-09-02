@@ -26,7 +26,7 @@ Module._load = function loadWithOpenAIStub(request, parent, isMain) {
   return originalModuleLoad.call(this, request, parent, isMain);
 };
 
-const { createLLM, formatProviderErrorMessage, isQuotaError, CURRENT_GEMINI_DEFAULT } = require('../src/llm');
+const { createLLM, formatProviderErrorMessage, isQuotaError, CURRENT_GEMINI_DEFAULT, OPENROUTER_DEFAULT_MODEL, OPENROUTER_SMART_MODEL, OPENROUTER_BASE_URL, resolveApiKey } = require('../src/llm');
 
 test.after(() => {
   Module._load = originalModuleLoad;
@@ -283,12 +283,6 @@ test('createLLM: leaves a user-chosen current Gemini model alone', () => {
 });
 
 // ---- OpenRouter -----------------------------------------------------------
-const {
-  OPENROUTER_BASE_URL,
-  OPENROUTER_DEFAULT_MODEL,
-  resolveApiKey
-} = require('../src/llm');
-
 function openrouterSettings(overrides) {
   return Object.assign({
     provider: 'openrouter',
@@ -297,7 +291,7 @@ function openrouterSettings(overrides) {
     models: {
       openrouter: {
         fast: OPENROUTER_DEFAULT_MODEL,
-        smart: OPENROUTER_DEFAULT_MODEL
+        smart: OPENROUTER_SMART_MODEL
       }
     }
   }, overrides || {});
@@ -320,6 +314,25 @@ test('routes OpenRouter through openrouter.ai with free-router fallbacks', async
   assert.ok(Array.isArray(capturedCompletionRequest.models));
   assert.ok(capturedCompletionRequest.models.includes('minimax/minimax-m2.7:free'));
   assert.equal(capturedCompletionRequest.reasoning, undefined);
+});
+
+test('OpenRouter Smart toggle upgrades identical Fast/Smart Gemma to Nemotron Super', async () => {
+  const stuck = createLLM(openrouterSettings({
+    smart: true,
+    models: {
+      openrouter: {
+        fast: OPENROUTER_DEFAULT_MODEL,
+        smart: OPENROUTER_DEFAULT_MODEL
+      }
+    }
+  }));
+  assert.equal(stuck.model, OPENROUTER_SMART_MODEL);
+  assert.equal(stuck.smart, true);
+
+  await stuck.stream({ system: '', turns: [], onToken: () => {} });
+  assert.equal(capturedCompletionRequest.model, OPENROUTER_SMART_MODEL);
+  assert.deepEqual(capturedCompletionRequest.reasoning, { effort: 'high' });
+  assert.ok(capturedCompletionRequest.models.includes('google/gemma-4-31b-it:free'));
 });
 
 test('OpenRouter migrates legacy free-router / Nvidia Ultra defaults and enables reasoning for Nemotron', async () => {
