@@ -1,5 +1,6 @@
 // GitHub release auto-update for packaged Electron builds (Windows NSIS today).
 const { app } = require('electron');
+const { formatUpdateUserMessage } = require('./update-messages');
 
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 12 * 1000;
@@ -15,6 +16,11 @@ function createAutoUpdate(send) {
   };
 
   function emit(patch) {
+    if (patch && patch.message != null) {
+      patch.message = formatUpdateUserMessage(patch.phase || state.phase, patch.message);
+    } else if (patch && patch.phase && !patch.message) {
+      patch.message = formatUpdateUserMessage(patch.phase, '');
+    }
     Object.assign(state, patch);
     send('update:status', { ...state });
   }
@@ -69,8 +75,8 @@ function createAutoUpdate(send) {
     });
   });
   autoUpdater.on('error', (err) => {
-    const message = err && err.message ? err.message : String(err);
-    emit({ phase: 'error', message, lastCheckedAt: Date.now() });
+    const raw = err && err.message ? err.message : String(err);
+    emit({ phase: 'error', message: raw, lastCheckedAt: Date.now() });
   });
 
   let timer = null;
@@ -82,8 +88,9 @@ function createAutoUpdate(send) {
         await autoUpdater.checkForUpdates();
         return { ok: true };
       } catch (err) {
-        emit({ phase: 'error', message: err.message || String(err), lastCheckedAt: Date.now() });
-        return { ok: false, error: err.message || String(err) };
+        const raw = err.message || String(err);
+        emit({ phase: 'error', message: raw, lastCheckedAt: Date.now() });
+        return { ok: false, error: raw };
       }
     },
     install() {

@@ -1804,7 +1804,11 @@
     const bannerAction = document.getElementById('update-banner-action');
 
     if (currentVersion) currentVersion.textContent = updateUiState.version || '—';
-    if (statusText) statusText.textContent = updateUiState.message || 'Installed builds check GitHub for new releases automatically.';
+    const statusMessage = updateUiState.message || 'apperture checks GitHub for updates automatically.';
+    if (statusText) {
+      statusText.textContent = statusMessage;
+      statusText.classList.toggle('update-status-error', updateUiState.phase === 'error');
+    }
     if (progressWrap) progressWrap.classList.toggle('hidden', updateUiState.phase !== 'downloading');
     if (progress) progress.value = updateUiState.percent || 0;
     if (progressLabel) progressLabel.textContent = `${updateUiState.percent || 0}%`;
