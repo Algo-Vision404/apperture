@@ -1202,7 +1202,7 @@
     banner.className = 'show';
     banner.innerHTML =
       '<div class="mic-perm-text">' +
-        '<strong>🎙️ Microphone access required</strong><br>' +
+        '<strong>Microphone access required</strong><br>' +
         'cue needs microphone permission to hear you during calls. Grant access in System Settings, then restart cue.' +
       '</div>' +
       '<div class="mic-perm-actions"></div>';
@@ -1218,22 +1218,22 @@
     dismissBtn.className = 'dismiss';
     dismissBtn.addEventListener('click', () => banner.classList.remove('show'));
     actions.appendChild(dismissBtn);
-    const panel = document.getElementById('panel');
-    panel.insertBefore(banner, document.getElementById('action-row'));
+    const panelMain = document.getElementById('panel-main') || document.getElementById('panel');
+    const actionRow = document.getElementById('action-row');
+    if (actionRow && actionRow.parentNode === panelMain) panelMain.insertBefore(banner, actionRow);
+    else panelMain.appendChild(banner);
   }
 
   // ---- settings ----------------------------------------------------------
   const scrim = $('#settings-scrim');
-  function openSettings() { fillSettings(); scrim.classList.remove('hidden'); }
-  async function closeSettings() {
-    if (await saveSettings()) scrim.classList.add('hidden');
-  }
   function openSettings() {
     fillSettings();
     scrim.classList.remove('hidden');
     refreshWhisperModels();
   }
-  function closeSettings() { saveSettings(); scrim.classList.add('hidden'); }
+  async function closeSettings() {
+    if (await saveSettings()) scrim.classList.add('hidden');
+  }
   $('#more-btn').addEventListener('click', openSettings);
   $('#s-close').addEventListener('click', () => { void closeSettings(); });
   scrim.addEventListener('click', (e) => { if (e.target === scrim) void closeSettings(); });
@@ -1340,7 +1340,9 @@
     if (!res || res.canceled) return;
     if (res.error) { showStatus('Resume import failed: ' + res.error); return; }
     $('#resume-text').value = res.text || '';
-    showStatus('Imported ' + res.fileName + ' — press Save to keep it.');
+    const resumeName = document.getElementById('resume-filename');
+    if (resumeName) resumeName.textContent = res.fileName || '';
+    showStatus('Imported ' + res.fileName + ' — click Done to keep it.');
   });
   const uploadJdBtn = document.getElementById('upload-jd-btn');
   if (uploadJdBtn) uploadJdBtn.addEventListener('click', async () => {
@@ -1348,7 +1350,9 @@
     if (!res || res.canceled) return;
     if (res.error) { showStatus('Job description import failed: ' + res.error); return; }
     $('#job-description').value = res.text || '';
-    showStatus('Imported ' + res.fileName + ' — press Save to keep it.');
+    const jdName = document.getElementById('jd-filename');
+    if (jdName) jdName.textContent = res.fileName || '';
+    showStatus('Imported ' + res.fileName + ' — click Done to keep it.');
   });
 
   function statusText() {
@@ -1582,10 +1586,14 @@
   // ---- example conversation (matches the reference screenshot) ------------
   function showExample() {
     clearMessages();
+    const pill = document.createElement('div');
+    pill.className = 'category-pill';
+    pill.textContent = 'Behavioral';
+    messages.appendChild(pill);
     addUserBubble('What should I say?');
     const ai = document.createElement('div');
     ai.className = 'ai-text';
-    ai.textContent = '“A discounted cash flow model values a company by projecting future free cash flows and discounting them to present value using the weighted average cost of capital.”';
+    ai.textContent = 'At my last role I owned a flaky checkout pipeline that was dropping about 4% of carts. I mapped the failure points, cut a feature flag for the risky path, and shipped a retry queue with metrics. Within two sprints drop-offs fell under 1% and support tickets for payment errors halved.';
     messages.appendChild(ai);
   }
 
@@ -1685,7 +1693,7 @@
     {
       icon: 'check',
       title: 'You’re all set',
-      body: 'How to use cue:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click <strong>▢</strong> in the top bar to start listening to a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>cue logo</strong>. Quit with ' + quitShortcut + '.'
+      body: 'How to use cue:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click the <strong>listen</strong> button in the top bar (square icon) to start hearing a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>cue logo</strong>. Quit with ' + quitShortcut + '.'
     }
   ];
   let obIndex = 0;

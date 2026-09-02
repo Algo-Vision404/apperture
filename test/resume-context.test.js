@@ -54,7 +54,10 @@ test('detectCategory: experience questions', () => {
 
 test('detectCategory: compensation questions', () => {
   assert.equal(detectCategory([{ channel: 'them', text: 'What are your salary expectations?' }]), 'compensation');
-  assert.equal(detectCategory([{ channel: 'them', text: 'Do you have any questions for me?' }]), 'compensation');
+});
+
+test('detectCategory: closing / questions-for-us', () => {
+  assert.equal(detectCategory([{ channel: 'them', text: 'Do you have any questions for me?' }]), 'closing');
 });
 
 test('detectCategory: technical questions', () => {
@@ -101,12 +104,21 @@ test('buildInterviewContext: motivation injects why company / why leaving', () =
   assert.ok(ctx.includes('Why Leaving'), 'should include why leaving');
 });
 
-test('buildInterviewContext: compensation injects salary and questions', () => {
+test('buildInterviewContext: compensation injects salary only', () => {
   const ctx = buildInterviewContext(fullSettings, 'say',
     [{ channel: 'them', text: 'What are your salary expectations?' }]);
   assert.ok(ctx !== null);
   assert.ok(ctx.includes('170k'), 'should include salary target');
-  assert.ok(ctx.includes('success look like'), 'should include questions to ask');
+  assert.ok(!ctx.includes('Questions to Ask Interviewer'), 'salary talk should not inject closing questions');
+});
+
+test('buildInterviewContext: closing injects prepared questions', () => {
+  const ctx = buildInterviewContext(fullSettings, 'say',
+    [{ channel: 'them', text: 'Do you have any questions for me?' }]);
+  assert.ok(ctx !== null);
+  assert.ok(ctx.includes('Questions to Ask Interviewer'), 'should include questions to ask');
+  assert.ok(ctx.includes('success look like'), 'should include prepared question text');
+  assert.ok(!ctx.includes('170k'), 'closing should not inject salary');
 });
 
 test('buildInterviewContext: leetcode returns null', () => {

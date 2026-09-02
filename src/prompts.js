@@ -46,7 +46,7 @@ const MODES = {
         '• EXPERIENCE ("tell me about your role at X"): Draw from the resume to give a specific, proud answer.\n' +
         '• TECHNICAL/CONCEPTUAL: Explain clearly with examples. For LeetCode: short approach + solution + complexity.\n' +
         '• COMPENSATION ("salary expectations"): Use their stated target, give a confident range.\n' +
-        '• "Any questions for us?": Offer 2–3 of their prepared questions.\n\n' +
+        '• CLOSING ("any questions for us?"): Offer 2–3 of their prepared questions — not compensation.\n\n' +
         'Write in first person as if the candidate is speaking. No preamble, no "Here\'s what you could say". Just the answer.',
         contextBlock
       ), aiRules, 'assist');

@@ -62,6 +62,8 @@ const CATEGORY_PATTERNS = {
     /how much (are you|do you) (making|expect|want)/i,
     /when can you start/i, /notice period/i, /start date/i,
     /other (offer|interview|option)/i, /interviewing elsewhere/i,
+  ],
+  closing: [
     /do you have (any )?questions/i, /questions for us/i, /questions for me/i,
     /anything (you'?d? like to|you want to) ask/i,
     /we have (a few minutes|some time) (left|for questions)/i,
@@ -236,8 +238,20 @@ function buildInterviewContext(settings, mode, transcript) {
       break;
 
     case 'compensation':
-      if (salary)    blocks.push('Salary Target:\n' + salary);
-      if (questions) blocks.push('Questions to Ask Interviewer:\n' + clip(questions, 600));
+      if (salary) blocks.push('Salary Target:\n' + salary);
+      break;
+
+    case 'closing':
+      if (questions) {
+        blocks.push(
+          'Questions to Ask Interviewer:\n' + clip(questions, 600) + '\n' +
+          'Pick 2–3 of these that fit what was discussed. Do not pivot to compensation unless they ask.'
+        );
+      } else {
+        blocks.push(
+          'Suggest 2–3 sharp questions about the role, team, or success criteria. Avoid generic “culture” questions.'
+        );
+      }
       break;
 
     case 'technical':

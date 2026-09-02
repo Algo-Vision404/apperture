@@ -1,7 +1,7 @@
 {
   "name": "cue",
   "version": "0.2.3",
-  "description": "Open-source invisible AI overlay — screen, mic, and meeting audio into your own LLM. A discreet cue for meetings and coding.",
+  "description": "cue — discreet AI overlay for meetings and coding. Screen, mic, and meeting audio into your own LLM.",
   "license": "GPL-3.0-or-later",
   "author": "cue",
   "main": "main.js",

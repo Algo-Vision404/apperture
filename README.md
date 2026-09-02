@@ -173,9 +173,10 @@ cue is hidden from most screen-share tools automatically — **Google Meet, Micr
 
 > On Windows, press **`Ctrl`** wherever **`⌘`** appears below. cue's own UI relabels the keys to match your OS.
 
-- **`⌘` `↵` — Assist.** The do-the-smart-thing key. On a coding problem it solves it; in a conversation it tells you what to say. Works from anywhere. Change it under **Settings → Keyboard shortcuts**.
+- **`⌘` `↵` — Assist.** The do-the-smart-thing key. On a coding problem it solves it; in a conversation it tells you what to say. Works from anywhere.
+- **`⌘` `⇧` `↵` — What should I say?** Drafts a spoken reply from the live conversation.
 - **`⌘` `H` — Solve what's on screen.** Screenshots a coding problem and returns the approach, code, and time/space complexity.
-- **The `▢` button** (top bar) — start/stop **listening** to a meeting. The green dot means it's live.
+- **Listen button** (square icon in the top bar) — start/stop **listening** to a meeting. The green dot means it's live.
 - **Type a question** in the box and press `↵` to ask about your screen or conversation.
 - **Smart** — flip it on for a smarter, more thorough model; off for fast and cheap.
 - **Hide** collapses the panel to just the top bar. Drag cue around by the **top pill**. Quit with `⌘` `⇧` `X` on macOS or `Ctrl` `Shift` `X` on Windows.
@@ -191,7 +192,7 @@ cue is an [Electron](https://www.electronjs.org/) app. Everything runs locally e
 **The three inputs are kept completely separate:**
 - **Screen** — captured with Electron's `desktopCapturer` (full-resolution screenshots, taken only when a feature needs one).
 - **Your mic ("You")** — `getUserMedia` → downsampled to 16 kHz audio → transcribed.
-- **Meeting audio ("Them")** — `getDisplayMedia` loopback capture of your system's output audio, kept on its own channel so cue knows *who* said what. **Windows only** — Chromium doesn't implement loopback capture elsewhere, so on macOS this stream comes back video-only and the channel stays silent.
+- **Meeting audio ("Them")** — `getDisplayMedia` loopback of system output, kept on its own channel so cue knows *who* said what. Works on Windows out of the box, and on **macOS 14.4+** via ScreenCaptureKit (Chromium loopback flags). Older macOS leaves this channel silent while screen + mic still work.
 
 Both audio streams are transcribed by the independently selected speech provider (local whisper.cpp, Deepgram, OpenAI, or Gemini) and fed, with an optional screenshot, to your chat model. Responses **stream** into the panel word-by-word.
 
@@ -230,7 +231,7 @@ Try `base.en`, `tiny.en`, or a quantized `q5`/`q8` model. Model size in Settings
 You probably granted an older build. Because the app is ad-hoc signed, a rebuild changes its identity and macOS stops honoring the old grant (the checkmark can linger). Toggle cue **off and on** in System Settings → Screen Recording, or remove and re-add it.
 
 **"What should I say?", "Follow-up questions", or "Recap" never hear the other person (macOS).**
-Expected — meeting audio is Windows-only (see [Platform support](#platform-support)). Your own mic still transcribes, so those features see the *You* side of the conversation but never the *Them* side.
+Meeting audio needs **macOS 14.4+** (see [Platform support](#platform-support)). On older macOS the *Them* channel stays silent; your mic still transcribes, so those features see the *You* side only. Also confirm Screen Recording is granted and Zoom’s capture mode uses window filtering.
 
 **cue has no dock or taskbar icon — how do I quit it?**
 That's deliberate; it stays out of your way. Press **`Ctrl` `Shift` `X`** (**`⌘` `⇧` `X`** on macOS). If the shortcut didn't register because another app claimed it, end the **cue** (or **electron**) process in Task Manager / Activity Monitor.

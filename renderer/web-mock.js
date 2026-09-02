@@ -61,7 +61,7 @@
     const text = replies[mode] || replies.ask;
     const parts = text.split(/(\s+)/);
     for (let i = 0; i < parts.length; i++) {
-      emit('llm:token', { t: parts[i] });
+      emit('llm:token', { text: parts[i] });
       await new Promise(function (r) { setTimeout(r, 12); });
     }
     emit('llm:done', {});
