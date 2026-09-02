@@ -43,9 +43,10 @@ const CATEGORY_PATTERNS = {
   ],
   experience: [
     /tell me about your (experience|background|role|work|time) (at|in|with|on)/i,
-    /walk me through your (resume|background|experience|role|career|most recent)/i,
-    /walk me through (your|the) (role|position|work|project)/i,
+    /walk me through your (resume|résumé|cv|background|experience|role|career|most recent)/i,
+    /walk me through (your|the) (role|position|work|project|resume|résumé|cv)/i,
     /what (were you responsible|did you do|was your role)/i,
+    /what (have you|did you) (built|worked on|done|shipped)/i,
     /biggest (project|achievement) (at|there|in your)/i,
     /tech stack/i, /day.to.day/i, /what did you build/i,
     /tell me more about/i, /elaborate on/i,
@@ -55,7 +56,20 @@ const CATEGORY_PATTERNS = {
     /what have you been working on/i,
     /walk me through what you('ve)? (done|built|worked on)/i,
     /can you (elaborate|expand) on/i,
-    /your (most recent|last|current|previous) (role|job|position)/i,
+    /your (most recent|last|current|previous) (role|job|position|company|internship)/i,
+    /from your (resume|résumé|cv)/i,
+    /on your (resume|résumé|cv)/i,
+    /according to your (resume|résumé|cv)/i,
+    /from my (resume|résumé|cv)/i,
+    /on my (resume|résumé|cv)/i,
+    /according to my (resume|résumé|cv)/i,
+    /(resume|résumé|cv)\b/i,
+    /(companies|roles|jobs|positions|internships).{0,48}(on|in|from).{0,16}(my|the|your).{0,8}(resume|résumé|cv)/i,
+    /what (companies|roles|jobs|positions|internships)\b/i,
+    /your (skills|education|projects|internship|internships)/i,
+    /my (skills|education|projects|internship|internships|experience|background)/i,
+    /where (did|have) you (work|worked|intern)/i,
+    /what (company|companies|roles?) (have you|did you)/i,
   ],
   compensation: [
     /salary (expectation|requirement|range)/i, /compensation/i,
@@ -136,25 +150,9 @@ function clip(text, limit) {
 
 function buildResumeBlock(resumeText, limit = 2400) {
   if (!resumeText || !resumeText.trim()) return '';
-  const parsed = parseResume(resumeText);
-  if (!parsed) return '';
-  if (parsed.parsed) {
-    const parts = [];
-    let rem = limit;
-    const order = ['name', 'summary', 'experience', 'skills', 'projects', 'education'];
-    for (const key of order) {
-      if (rem <= 0) break;
-      const val = parsed.sections[key];
-      if (!val) continue;
-      const sp = SECTION_PATTERNS.find(s => s.key === key);
-      const label = sp && sp.label;
-      const chunk = label ? `${label}:\n${clip(val, Math.min(rem - label.length - 2, 800))}` : clip(val, 80);
-      parts.push(chunk);
-      rem -= chunk.length;
-    }
-    return parts.join('\n\n');
-  }
-  return clip(parsed.raw, limit);
+  // Prefer the full raw résumé. Section regexes often mis-slice real PDF imports
+  // (e.g. grabbing a skills fragment as "Experience"), which starves the model.
+  return clip(String(resumeText).trim().replace(/\n{3,}/g, '\n\n'), limit);
 }
 
 function buildJDBlock(jd, limit = 600) {
@@ -162,7 +160,16 @@ function buildJDBlock(jd, limit = 600) {
   return 'Target Role / Job Description:\n' + clip(jd.trim().replace(/\s+/g, ' '), limit);
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+const RESUME_GROUNDING_RULES =
+  'CRITICAL — Résumé mode is ON.\n' +
+  'The FULL RÉSUMÉ TEXT below is the only source of truth for the candidate\'s background.\n' +
+  'For ANY question about experience, roles, companies, skills, education, projects, tools, dates, or "tell me about yourself":\n' +
+  '• Answer from the résumé — name companies, titles, dates, tools, and outcomes that appear there.\n' +
+  '• Speak in first person as the candidate (I / my), ready to say out loud.\n' +
+  '• Prefer concrete facts over generic advice. If the résumé has the detail, use it.\n' +
+  '• Do NOT invent employers, titles, dates, metrics, or skills that are not in the résumé.\n' +
+  '• If a detail is missing, say the résumé does not include it — then answer as well as you can from what is there.\n' +
+  '• Even short questions like "what did you do there?" or "your skills?" must be answered from this résumé.';
 
 /**
  * buildInterviewContext(settings, mode, transcript, userText?)
@@ -193,18 +200,14 @@ function buildInterviewContext(settings, mode, transcript, userText) {
 
   // Résumé grounding — only when the Resume option is on and text is loaded
   if (useResume && hasResume) {
-    const resumeLimit = (category === 'behavioral' || category === 'experience' || category === 'general')
-      ? 4200
-      : 1800;
+    // Generous budget so imported PDFs keep real experience bullets intact
+    const resumeLimit = 9000;
     const rb = buildResumeBlock(resume, resumeLimit);
     if (rb) {
       blocks.push(
         '=== Résumé grounding (ON) ===\n' +
-        'Answer background, experience, skills, and “tell me about yourself” questions ' +
-        'directly from this résumé. Prefer concrete roles, companies, dates, projects, and metrics. ' +
-        'Do not invent employers, titles, dates, or achievements. ' +
-        'If a detail is not in the résumé, say the résumé does not include it.\n\n' +
-        rb
+        RESUME_GROUNDING_RULES +
+        '\n\n--- FULL RÉSUMÉ TEXT ---\n' + rb + '\n--- END RÉSUMÉ ---'
       );
     }
   }

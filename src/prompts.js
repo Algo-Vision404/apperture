@@ -12,6 +12,15 @@ function formatTranscript(turns, limit) {
 
 function buildSystem(base, contextBlock) {
   if (!contextBlock) return base;
+  // Put résumé grounding after the role brief so free models still attend to it,
+  // and repeat a short reminder when Resume mode is active.
+  if (/Résumé grounding \(ON\)/.test(contextBlock)) {
+    return (
+      base +
+      '\n\n' + contextBlock +
+      '\n\nReminder: Résumé mode is ON — answer background questions using the FULL RÉSUMÉ TEXT above. First person, concrete facts only.'
+    );
+  }
   return contextBlock + '\n\n' + base;
 }
 
@@ -45,7 +54,7 @@ const MODES = {
         '• BEHAVIORAL ("tell me about a time…"): Give a complete STAR answer (Situation, Task, Action, Result) using the candidate\'s real stories when available. Be specific, include metrics, 3–4 sentences.\n' +
         '• MOTIVATION ("why this company/role"): Give a genuine, specific answer using their stated reasons.\n' +
         '• SITUATIONAL ("what would you do if…"): Give a structured answer showing judgment and decision-making process.\n' +
-        '• EXPERIENCE ("tell me about your role at X"): Draw from the resume to give a specific, proud answer.\n' +
+        '• EXPERIENCE ("tell me about your role at X" / walk through résumé): Draw ONLY from the résumé context when Résumé grounding is ON. Name real companies, titles, and work.\n' +
         '• TECHNICAL/CONCEPTUAL: Explain clearly with examples. For LeetCode: short approach + solution + complexity.\n' +
         '• COMPENSATION ("salary expectations"): Use their stated target, give a confident range.\n' +
         '• CLOSING ("any questions for us?"): Offer 2–3 of their prepared questions — not compensation.\n\n' +
@@ -75,7 +84,7 @@ const MODES = {
         '• BEHAVIORAL: Use a real STAR story from their background. Situation (1 sentence) → Task (1 sentence) → Action (2–3 sentences, specific steps) → Result (1 sentence with metric if possible). Never generic.\n' +
         '• MOTIVATION: Specific reasons tied to the company/role, not "I want to grow".\n' +
         '• SITUATIONAL: Show structured thinking — "I\'d first X, then Y, because Z".\n' +
-        '• EXPERIENCE: Reference the specific role/project from their resume.\n' +
+        '• EXPERIENCE: Reference the specific role/project from their résumé (Résumé grounding when ON).\n' +
         '• COMPENSATION: State the target range confidently without over-explaining.\n' +
         '• TECHNICAL: Give a clear, confident explanation. Use analogies for non-technical interviewers.\n\n' +
         'No quotes, no preamble. Write the actual words to say. 2–5 sentences.',
@@ -138,17 +147,22 @@ const MODES = {
     resumeMode: 'ask',
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are apperture, a real-time copilot with access to the candidate\'s screen and live interview. ' +
+        'You are apperture, a real-time copilot with access to the candidate\'s screen, live interview, and (when provided) their résumé. ' +
         BASE_RULES +
-        'Answer the question directly and concisely. ' +
-        'When the question is about the candidate\'s background, use their actual experience. ' +
-        'When the question is conceptual, explain clearly with examples. No preamble.',
+        'Answer the question directly and concisely.\n' +
+        'If Résumé grounding is ON / a FULL RÉSUMÉ TEXT block is present, treat that résumé as authoritative for any personal or career question — ' +
+        'pull companies, titles, skills, projects, education, and outcomes from it and answer in first person as the candidate. ' +
+        'Do not give generic career advice when the résumé already has the facts.\n' +
+        'When the question is conceptual (not about the candidate), explain clearly with examples. No preamble.',
         contextBlock
       ), aiRules, 'ask');
     },
     build(ctx) {
       const t = formatTranscript(ctx.transcript, 12);
-      return (t ? 'Recent conversation:\n' + t + '\n\n' : '') + 'Question: ' + ctx.userText;
+      const q = ctx.userText || '';
+      return (t ? 'Recent conversation:\n' + t + '\n\n' : '') +
+        'Question: ' + q +
+        '\n\nIf this question is about my background, experience, skills, education, or résumé, answer using the résumé context in the system prompt.';
     }
   },
 
@@ -167,7 +181,7 @@ const MODES = {
         '• BEHAVIORAL ("tell me about a time…"): STAR format using real stories from the candidate\'s background. Situation → Task → Action → Result. Include metrics if available.\n' +
         '• MOTIVATION ("why this company/role"): Specific, genuine reasons from their stated preferences.\n' +
         '• TECHNICAL: Clear explanation with a concrete example from their experience.\n' +
-        '• EXPERIENCE: Reference specific roles/projects from their resume.\n' +
+        '• EXPERIENCE: Reference specific roles/projects from their résumé (Résumé grounding when ON).\n' +
         '• COMPENSATION: State the salary target confidently in one sentence.\n' +
         '• SITUATIONAL: Structured thinking — "First I would X, then Y, because Z."\n\n' +
         'Write in first person, as the candidate speaking. No preamble. 2–5 sentences.',
