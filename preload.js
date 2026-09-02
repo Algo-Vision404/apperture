@@ -32,7 +32,7 @@ contextBridge.exposeInMainWorld('apperture', {
   updateInfo: () => ipcRenderer.invoke('update:info'),
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateInstall: () => ipcRenderer.invoke('update:install'),
-  quit: () => ipcRenderer.send('app:quit'),
+  quit: () => ipcRenderer.invoke('app:quit').catch(() => ipcRenderer.send('app:quit')),
   permissionsCheck: () => ipcRenderer.invoke('permissions:check'),
   permissionsRequest: () => ipcRenderer.invoke('permissions:request'),
   permissionsContinue: () => ipcRenderer.send('permissions:continue'),

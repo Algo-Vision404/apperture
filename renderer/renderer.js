@@ -47,6 +47,11 @@
   if (guideBtn) guideBtn.innerHTML = icon('book', { size: 15 });
   syncListenButton(false);
   $('#quit-btn').innerHTML = icon('x', { size: 15, stroke: 2 });
+  $('#quit-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void apperture.quit();
+  });
   document.querySelector('.act[data-mode="assist"] .ic').innerHTML = icon('sparkles', { size: 15 });
   document.querySelector('.act[data-mode="say"] .ic').innerHTML = icon('wand-sparkles', { size: 15 });
   document.querySelector('.act[data-mode="followup"] .ic').innerHTML = icon('message-circle', { size: 15 });

@@ -65,6 +65,22 @@ let desiredCaptureState = false;
 let captureTransition = Promise.resolve(false);
 let autoUpdate = null;
 
+function quitApp() {
+  try { globalShortcut.unregisterAll(); } catch (_) {}
+  try { stopWindowDrag(); } catch (_) {}
+  try { stopAppLink(); } catch (_) {}
+  try {
+    if (whisperModelManager?.activeDownload) {
+      whisperModelManager.cancelDownload(whisperModelManager.activeDownload.modelId);
+    }
+  } catch (_) {}
+  if (localWhisperTranscriber) {
+    localWhisperTranscriber.forceStop().catch(() => {});
+  }
+  // Overlay / toolbar windows can swallow app.quit(); exit is the reliable path.
+  app.exit(0);
+}
+
 // -------- streaming STT state --------
 let streamingSTT = { you: null, them: null }; // streaming STT instances per channel
 let streamingMode = false; // true when using WebSocket streaming STT
@@ -665,7 +681,6 @@ ipcMain.on('window:drag-end', () => {
   }
 });
 ipcMain.on('open-pane', (_e, url) => { shell.openExternal(url).catch(() => {}); });
-ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('log', (_e, msg) => console.log('[renderer]', msg));
 // -------- resume / job-description file import --------
 // The dialog runs in MAIN and is filtered to pdf/docx; the renderer never supplies a path.
@@ -690,7 +705,8 @@ ipcMain.handle('profile:pickDocument', async () => {
     return { canceled: false, error: (e && e.message) || String(e) };
   }
 });
-ipcMain.on('app:quit', () => app.quit());
+ipcMain.on('app:quit', () => { quitApp(); });
+ipcMain.handle('app:quit', () => { quitApp(); return { ok: true }; });
 ipcMain.handle('applink:state', () => appLinkConsentState());
 ipcMain.handle('applink:revoke', (_e, callerId) => revokeAppLinkCaller(callerId));
 
@@ -711,7 +727,7 @@ function registerShortcuts() {
   shortcutState.say = globalShortcut.register('CommandOrControl+Shift+Return', () => runFeature('say', ''));
   shortcutState.leetcode = globalShortcut.register('CommandOrControl+H', () => runFeature('leetcode', ''));
   shortcutState.hide = globalShortcut.register('CommandOrControl+Shift+/', () => send('hide:toggle', {}));
-  shortcutState.quit = globalShortcut.register('CommandOrControl+Shift+X', () => app.quit());
+  shortcutState.quit = globalShortcut.register('CommandOrControl+Shift+X', () => quitApp());
   for (const [name, wasRegistered] of Object.entries(shortcutState)) {
     if (!wasRegistered) {
       recordEvent({ level: 'warn', event: 'shortcut_unavailable', msg: 'another application holds the ' + name + ' shortcut', frame: 'registerShortcuts', context: { shortcut: name } });
