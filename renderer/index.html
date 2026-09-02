@@ -22,6 +22,11 @@
       <button class="tb-quit" id="quit-btn" title="Quit apperture"></button>
     </div>
 
+    <div id="web-notice" class="web-notice hidden" role="status">
+      <span class="web-notice-text">Browser preview — screen-share hiding needs the desktop app</span>
+      <button type="button" id="web-notice-dismiss" class="web-notice-dismiss" aria-label="Dismiss">×</button>
+    </div>
+
     <!-- Main assistant panel -->
     <div id="panel-wrap">
       <span id="live-dot" class="off"></span>
@@ -67,22 +72,23 @@
                 <div id="placeholder">Ask about your screen or conversation</div>
                 <textarea id="input" rows="1" spellcheck="false"></textarea>
               </div>
+              <div id="prep-status" class="prep-status">
+                <button type="button" class="prep-item" data-field="resume" id="prep-resume-btn">Resume</button>
+                <button type="button" class="prep-item" data-field="jd" id="prep-jd-btn">Job</button>
+                <button type="button" class="prep-item" data-field="stories" id="prep-stories-btn">Stories</button>
+                <button type="button" class="prep-item" data-field="salary" id="prep-salary-btn">Salary</button>
+              </div>
               <div id="composer-bottom">
-                <button id="smart-toggle" class="smart-pill"><span class="ic"></span><span>Smart</span></button>
-                <button id="resume-toggle" class="smart-pill resume-pill" title="Ground answers in your résumé"><span class="ic"></span><span>Resume</span></button>
-                <button id="history-btn" class="history-btn" title="Live transcript"><span class="ic"></span></button>
-                <button id="more-btn" class="more-btn" title="Settings"></button>
-                <div class="spacer"></div>
-                <button id="send-btn" title="Send"></button>
+                <div class="composer-tools">
+                  <button id="smart-toggle" class="smart-pill"><span class="ic"></span><span>Smart</span></button>
+                  <button id="resume-toggle" class="smart-pill resume-pill" title="Ground answers in your résumé"><span class="ic"></span><span>Resume</span></button>
+                  <button id="history-btn" class="history-btn" title="Live transcript"><span class="ic"></span></button>
+                  <button id="more-btn" class="more-btn" title="Settings"></button>
+                </div>
+                <button id="send-btn" title="Send message (Enter)"></button>
               </div>
             </div>
 
-            <div id="prep-status" class="prep-status">
-              <button type="button" class="prep-item" data-field="resume" id="prep-resume-btn">Resume</button>
-              <button type="button" class="prep-item" data-field="jd" id="prep-jd-btn">Job</button>
-              <button type="button" class="prep-item" data-field="stories" id="prep-stories-btn">Stories</button>
-              <button type="button" class="prep-item" data-field="salary" id="prep-salary-btn">Salary</button>
-            </div>
           </div>
 
           <!-- Live transcript — docks beside main column when open -->
@@ -139,16 +145,22 @@
           <button data-provider="azure">Azure AI</button>
         </div>
 
-        <label class="s-label">API keys &amp; URLs <span class="s-hint">stored locally · never sent to any server</span></label>
+        <label class="s-label">API keys <span class="s-hint">stored locally · never sent to apperture servers</span></label>
         <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
         <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" /></div>
         <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
         <div class="s-field"><span>OpenRouter</span><input id="key-openrouter" type="password" placeholder="sk-or-v1-... or OPENROUTER_API_KEY" autocomplete="off" /></div>
+        <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
+
+        <button type="button" id="keys-advanced-toggle" class="s-advanced-toggle" aria-expanded="false">
+          <span class="s-advanced-chev">▸</span> More providers &amp; endpoints
+        </button>
+        <div id="keys-advanced" class="s-advanced-panel hidden">
         <div class="s-field"><span>Deepgram</span><input id="key-deepgram" type="password" placeholder="dg-..." autocomplete="off" /></div>
         <div class="s-field"><span>Custom</span><input id="key-custom" type="password" placeholder="optional" autocomplete="off" /></div>
         <div class="s-field"><span>MiniMax</span><input id="key-minimax" type="password" placeholder="MiniMax API key" autocomplete="off" /></div>
 
-        <label class="s-label">MiniMax region <span class="s-hint">keys are region-bound — a Global key will 401 against China, and vice versa</span></label>
+        <label class="s-label">MiniMax region <span class="s-hint">keys are region-bound</span></label>
         <div class="s-seg" id="minimax-region-seg">
           <button data-region="global_en">Global</button>
           <button data-region="cn_zh">China</button>
@@ -160,13 +172,13 @@
           <div class="s-help">Your Custom key and LLM requests are sent to this URL. Speech-to-text continues to use Deepgram, OpenAI, or Gemini.</div>
         </div>
         <div class="s-field"><span>Ollama URL</span><input id="key-ollama" type="text" placeholder="http://localhost:11434" autocomplete="off" /></div>
-        <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
         <div class="s-field"><span>Azure AI Foundry</span><input id="key-azure" type="password" placeholder="azure key or Entra token" autocomplete="off" /></div>
 
-        <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI: https://&lt;resource&gt;.openai.azure.com/openai · AI Foundry: https://&lt;host&gt;.cognitiveservices.azure.com (apperture adds /openai/v1)</span></label>
+        <label class="s-label">Azure endpoint</label>
         <div class="s-field"><span>Endpoint</span><input id="azure-endpoint" type="text" placeholder="https://host.cognitiveservices.azure.com" autocomplete="off" /></div>
+        </div>
 
-        <label class="s-label">Models <span class="s-hint">Fast = Smart off · Smart = Smart on (must differ)</span></label>
+        <label class="s-label s-label-spaced">Models <span class="s-hint">Fast = Smart off · Smart = Smart on</span></label>
         <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" placeholder="e.g. google/gemma-4-31b-it:free" /></div>
         <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" placeholder="e.g. minimax/minimax-m2.7:free" /></div>
 

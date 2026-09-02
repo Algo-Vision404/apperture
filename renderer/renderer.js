@@ -34,6 +34,7 @@
   let busy = false;
   let aiEl = null;       // current streaming <div class="ai-text">
   let caretEl = null;
+  let thinkingEl = null;
   let responseCount = 0;
   const MAX_RESPONSES = 20;
 
@@ -78,11 +79,31 @@
     const empty = document.createElement('div');
     empty.className = 'messages-empty';
     empty.id = 'messages-empty';
+    const assistHint = (isWindows || !isMac) ? 'Ctrl+↵' : '⌘↵';
     empty.innerHTML =
       '<div class="me-kicker">apperture</div>' +
       '<div class="me-title">Ready when you are</div>' +
-      '<div class="me-body">Tap the mic to listen live, or ask — answers stream from your real model.</div>';
+      '<div class="me-body">Listen live, ask a question, or let Assist read the room.</div>' +
+      '<div class="me-quick">' +
+        '<button type="button" class="me-card" data-empty-action="listen">' +
+          '<strong>Listen</strong><span>Mic + live captions</span>' +
+        '</button>' +
+        '<button type="button" class="me-card" data-empty-action="assist">' +
+          '<strong>Assist</strong><span>' + esc(assistHint) + ' — scan screen</span>' +
+        '</button>' +
+        '<button type="button" class="me-card" data-empty-action="settings">' +
+          '<strong>Settings</strong><span>Keys, audio, stealth</span>' +
+        '</button>' +
+      '</div>';
     messages.appendChild(empty);
+    empty.querySelectorAll('[data-empty-action]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const action = btn.getAttribute('data-empty-action');
+        if (action === 'listen') $('#stop-btn').click();
+        else if (action === 'assist') runMode('assist', '');
+        else if (action === 'settings') openSettings();
+      });
+    });
   }
 
   function hideEmptyState() {
@@ -98,8 +119,18 @@
     messages.appendChild(b);
   }
 
+  function clearThinking() {
+    if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+    thinkingEl = null;
+  }
+
   function startAi(small) {
     hideEmptyState();
+    clearThinking();
+    thinkingEl = document.createElement('div');
+    thinkingEl.className = 'ai-thinking';
+    thinkingEl.textContent = 'Thinking';
+    messages.appendChild(thinkingEl);
     aiEl = document.createElement('div');
     aiEl.className = 'ai-text' + (small ? ' small' : '');
     aiEl.dataset.raw = '';
@@ -111,6 +142,7 @@
 
   function appendToken(t) {
     if (!aiEl) startAi(false);
+    clearThinking();
     aiEl.dataset.raw += t;
     const span = document.createElement('span');
     span.className = 'w';
@@ -124,6 +156,7 @@
   }
 
   function finalizeAi() {
+    clearThinking();
     if (!aiEl) return;
     const raw = aiEl.dataset.raw || '';
     aiEl.innerHTML = renderMarkdown(raw);
@@ -134,10 +167,17 @@
   function setBusy(v) {
     busy = v;
     $('#send-btn').classList.toggle('busy', v);
+    const app = document.getElementById('app');
+    if (app) app.classList.toggle('is-busy', v);
     clearTimeout(busyFailsafe);
     // Failsafe: main has a 25s stream watchdog that always sends llm:done/llm:error, but if a
     // terminal event is ever lost the whole UI stays frozen — self-clear after a generous window.
-    if (v) busyFailsafe = setTimeout(() => { busy = false; $('#send-btn').classList.toggle('busy', false); }, 40000);
+    if (v) busyFailsafe = setTimeout(() => {
+      busy = false;
+      $('#send-btn').classList.toggle('busy', false);
+      const app = document.getElementById('app');
+      if (app) app.classList.remove('is-busy');
+    }, 40000);
   }
 
   // ---- transcript helpers ------------------------------------------------
@@ -1405,6 +1445,7 @@
   apperture.on('llm:token', ({ text }) => appendToken(text));
   apperture.on('llm:done', () => { finalizeAi(); setBusy(false); });
   apperture.on('llm:error', ({ message }) => {
+    clearThinking();
     if (!aiEl) startAi(true);
     aiEl.dataset.raw = message; finalizeAi(); setBusy(false);
   });
@@ -1596,10 +1637,49 @@
     else panelMain.appendChild(banner);
   }
 
+  function initWebNotice() {
+    const notice = document.getElementById('web-notice');
+    const dismiss = document.getElementById('web-notice-dismiss');
+    if (!notice || !apperture.isWeb) return;
+    if (sessionStorage.getItem('apperture-web-notice-dismissed') === '1') return;
+    notice.classList.remove('hidden');
+    if (dismiss) {
+      dismiss.addEventListener('click', function () {
+        notice.classList.add('hidden');
+        try { sessionStorage.setItem('apperture-web-notice-dismissed', '1'); } catch (_) {}
+      });
+    }
+  }
+
+  function initKeysAdvancedToggle() {
+    const toggle = document.getElementById('keys-advanced-toggle');
+    const panel = document.getElementById('keys-advanced');
+    if (!toggle || !panel) return;
+    function setOpen(open) {
+      panel.classList.toggle('hidden', !open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    if (!toggle.dataset.wired) {
+      toggle.dataset.wired = '1';
+      toggle.addEventListener('click', function () {
+        setOpen(panel.classList.contains('hidden'));
+      });
+    }
+    const advancedProviders = ['custom', 'ollama', 'minimax', 'azure', 'deepgram'];
+    if (settings && advancedProviders.indexOf(settings.provider) !== -1) setOpen(true);
+    else if (settings && settings.apiKeys) {
+      const k = settings.apiKeys;
+      if (k.deepgram || k.custom || k.minimax || k.azure || (k.ollama && k.ollama !== 'http://localhost:11434')) {
+        setOpen(true);
+      }
+    }
+  }
+
   // ---- settings ----------------------------------------------------------
   const scrim = $('#settings-scrim');
   function openSettings() {
     fillSettings();
+    initKeysAdvancedToggle();
     scrim.classList.remove('hidden');
     refreshWhisperModels();
   }
@@ -2125,7 +2205,7 @@
   document.addEventListener('mousemove', (e) => {
     if (isDragging) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const overUI = !!(el && el.closest && el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim'));
+    const overUI = !!(el && el.closest && el.closest('#toolbar, #web-notice, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim'));
     setIgnore(!overUI);
   });
   setIgnore(true); // start fully click-through; hovering the panel re-enables it
@@ -2292,6 +2372,7 @@
     const platformInfo = await apperture.platformInfo();
     updateCaptureProtectionUi(platformInfo);
     syncStealthUi();
+    initWebNotice();
 
     // R4: shortcut hints
     const sayHintEl = document.getElementById('say-shortcut-hint');
