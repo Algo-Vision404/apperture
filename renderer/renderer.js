@@ -1850,8 +1850,9 @@
     // R4: shortcut hints
     const sayHintEl = document.getElementById('say-shortcut-hint');
     const assistHintEl = document.getElementById('assist-shortcut-hint');
-    if (sayHintEl) sayHintEl.textContent = isWindows ? 'Ctrl+Shift+↵' : '⌘⇧↵';
-    if (assistHintEl) assistHintEl.textContent = isWindows ? 'Ctrl+↵' : '⌘↵';
+    const useCtrl = isWindows || !isMac;
+    if (sayHintEl) sayHintEl.textContent = useCtrl ? 'Ctrl+Shift+↵' : '⌘⇧↵';
+    if (assistHintEl) assistHintEl.textContent = useCtrl ? 'Ctrl+↵' : '⌘↵';
 
     // R5: prep status
     updatePrepStatus();

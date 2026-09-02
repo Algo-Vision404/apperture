@@ -33,10 +33,10 @@ function injectMock(html) {
         radial-gradient(900px 480px at 12% 0%, rgba(212,160,23,0.16), transparent 55%),
         radial-gradient(700px 420px at 88% 100%, rgba(60,184,138,0.10), transparent 50%),
         linear-gradient(165deg, #151922 0%, #07080b 48%, #0d1218 100%) !important;
-      overflow: auto !important;
+      overflow: hidden !important;
       min-height: 100%;
     }
-    #app { padding-bottom: 56px; padding-top: 28px; }
+    #app { padding-bottom: 40px; padding-top: 28px; max-height: 100vh; overflow: auto; }
   </style>`;
   return html
     .replace('</head>', bootCss + '\n</head>')
