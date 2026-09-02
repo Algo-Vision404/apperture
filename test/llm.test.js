@@ -312,8 +312,8 @@ test('routes OpenRouter through openrouter.ai with free-router fallbacks', async
 
   assert.equal(capturedClientOptions.apiKey, 'sk-or-v1-test');
   assert.equal(capturedClientOptions.baseURL, OPENROUTER_BASE_URL);
-  assert.equal(capturedClientOptions.defaultHeaders['X-Title'], 'cue');
-  assert.equal(capturedClientOptions.defaultHeaders['HTTP-Referer'], 'https://github.com/Blueturboguy07/cue');
+  assert.equal(capturedClientOptions.defaultHeaders['X-Title'], 'apperture');
+  assert.equal(capturedClientOptions.defaultHeaders['HTTP-Referer'], 'https://github.com/Blueturboguy07/apperture');
   assert.equal(capturedCompletionRequest.model, OPENROUTER_DEFAULT_MODEL);
   assert.equal(capturedCompletionRequest.stream, true);
   assert.equal(capturedCompletionRequest.tool_choice, 'none');

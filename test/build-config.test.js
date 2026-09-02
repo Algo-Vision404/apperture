@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const pkg = require('../package.json');
 
-// Regression test for the actual incident behind the "cue is damaged and
+// Regression test for the actual incident behind the "apperture is damaged and
 // can't be opened" bug reports: package.json used to carry its own legacy
 // "build" field (mac.identity: null, no publish config). electron-builder
 // picked that up INSTEAD OF electron-builder.cjs, so every release —

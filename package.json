@@ -1,9 +1,9 @@
 {
-  "name": "cue",
+  "name": "apperture",
   "version": "0.2.3",
-  "description": "cue — discreet AI overlay for meetings and coding. Screen, mic, and meeting audio into your own LLM.",
+  "description": "apperture — discreet AI overlay for meetings and coding. Screen, mic, and meeting audio into your own LLM.",
   "license": "GPL-3.0-or-later",
-  "author": "cue",
+  "author": "apperture",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

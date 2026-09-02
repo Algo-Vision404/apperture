@@ -1,10 +1,10 @@
-/* cue renderer — UI state, mic capture, IPC, streaming render. */
+/* apperture renderer — UI state, mic capture, IPC, streaming render. */
 (function () {
   const { icon } = window.ICONS;
-  const cue = window.cue; // exposed by preload
+  const apperture = window.apperture; // exposed by preload
   const $ = (s) => document.querySelector(s);
-  const isWindows = cue.platform === 'win32';
-  const isMac = cue.platform === 'darwin';
+  const isWindows = apperture.platform === 'win32';
+  const isMac = apperture.platform === 'darwin';
 
   // ---- paint icons -------------------------------------------------------
   function setListenIcon(active) {
@@ -77,7 +77,7 @@
     empty.className = 'messages-empty';
     empty.id = 'messages-empty';
     empty.innerHTML =
-      '<div class="me-kicker">cue</div>' +
+      '<div class="me-kicker">apperture</div>' +
       '<div class="me-title">Ready when you are</div>' +
       '<div class="me-body">Tap the mic to listen live, or ask — answers stream from your real model.</div>';
     messages.appendChild(empty);
@@ -179,7 +179,7 @@
   function runMode(mode, text) {
     if (busy) return;
     setBusy(true);
-    cue.ask({ mode, text: text || '' });
+    apperture.ask({ mode, text: text || '' });
   }
 
   document.querySelectorAll('.act').forEach((btn) => {
@@ -577,7 +577,7 @@
   smartBtn.addEventListener('click', async () => {
     settings.smart = !settings.smart;
     smartBtn.classList.toggle('on', settings.smart);
-    await cue.settingsSet({ smart: settings.smart });
+    await apperture.settingsSet({ smart: settings.smart });
   });
 
   // Hide / collapse
@@ -590,7 +590,7 @@
     if (stt) stt.style.display = collapsed ? 'none' : '';
   }
   $('#hide-btn').addEventListener('click', toggleHide);
-  cue.on('hide:toggle', toggleHide);
+  apperture.on('hide:toggle', toggleHide);
 
   // Stop = start/stop listening. Kick off system-audio capture straight from the click so
   // the user-gesture is fresh for getDisplayMedia (loopback capture needs it).
@@ -601,7 +601,7 @@
       // mic will still work and capture will toggle regardless
       try { await startSystemAudio(); } catch (_) { /* handled inside startSystemAudio */ }
     }
-    const active = await cue.captureToggle();
+    const active = await apperture.captureToggle();
     if (turningOn && !active) stopSystemAudio();
   });
 
@@ -611,7 +611,7 @@
   const clearTranscriptBtn = document.getElementById('clear-transcript-btn');
   if (clearTranscriptBtn) {
     clearTranscriptBtn.addEventListener('click', async () => {
-      await cue.clearTranscript();
+      await apperture.clearTranscript();
       clearTranscriptSidebar();
       updateHistoryBadge();
       showToast('Conversation history cleared', 2500);
@@ -636,7 +636,7 @@
       // (e.g. a virtual/placeholder device, or a device that was unplugged
       // between permission grant and capture start). Fail loudly here instead
       // of silently wiring up an AudioWorklet to nothing — that produces the
-      // "cue never hears me, no error shown" symptom with no diagnostic at all.
+      // "apperture never hears me, no error shown" symptom with no diagnostic at all.
       const [track] = micStream.getAudioTracks();
       if (!track) {
         micStream.getTracks().forEach((t) => t.stop());
@@ -644,23 +644,23 @@
         showStatus('No microphone audio track was available. Check Windows Sound settings for a working default input device, then try again.');
         return;
       }
-      cue.log('mic stream started: track=' + (track.label || '(no label — permission may be stale)') + ' muted=' + track.muted);
+      apperture.log('mic stream started: track=' + (track.label || '(no label — permission may be stale)') + ' muted=' + track.muted);
       audioCtx = new AudioContext({ sampleRate: 16000 });
 
       // Use AudioWorklet for low-latency, off-main-thread processing
       try {
         await audioCtx.audioWorklet.addModule('audio-worklet-processor.js');
         const source = audioCtx.createMediaStreamSource(micStream);
-        micWorklet = new AudioWorkletNode(audioCtx, 'cue-audio-processor');
+        micWorklet = new AudioWorkletNode(audioCtx, 'apperture-audio-processor');
         micWorklet.port.onmessage = (e) => {
-          cue.micPcm(e.data);
+          apperture.micPcm(e.data);
         };
         source.connect(micWorklet);
         // Don't connect to destination — we just capture, don't play
-        cue.log('mic AudioWorklet processor attached');
+        apperture.log('mic AudioWorklet processor attached');
       } catch (workletErr) {
         // Fallback to ScriptProcessor if AudioWorklet fails (shouldn't happen in Electron 33+)
-        cue.log('AudioWorklet failed, falling back to ScriptProcessor: ' + workletErr.message);
+        apperture.log('AudioWorklet failed, falling back to ScriptProcessor: ' + workletErr.message);
         const micNode = audioCtx.createMediaStreamSource(micStream);
         const micProc = audioCtx.createScriptProcessor(4096, 1, 1);
         const sink = audioCtx.createGain(); sink.gain.value = 0;
@@ -669,14 +669,14 @@
           const f = e.inputBuffer.getChannelData(0);
           const out = new Int16Array(f.length);
           for (let i = 0; i < f.length; i++) { const s = Math.max(-1, Math.min(1, f[i])); out[i] = s < 0 ? s * 0x8000 : s * 0x7fff; }
-          cue.micPcm(out.buffer);
+          apperture.micPcm(out.buffer);
         };
         micWorklet = { _legacy: true, proc: micProc, node: micNode, sink };
       }
     } catch (err) {
       const message = err && err.message ? err.message : String(err);
       const name = err && err.name;
-      cue.log('mic error: ' + name + ' — ' + message);
+      apperture.log('mic error: ' + name + ' — ' + message);
       // getUserMedia's DOMException.name is the reliable signal here — the
       // .message text varies by Chromium version and isn't meant for users.
       // Distinguishing "no device" from "denied" from "in use elsewhere"
@@ -685,8 +685,8 @@
         showStatus('No microphone was found. Plug one in, or pick a default input device in your OS sound settings, then try again.');
       } else if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
         showStatus(isWindows
-          ? 'Microphone permission was denied. Settings → Privacy & security → Microphone → allow cue, then try again.'
-          : 'Microphone permission was denied. System Settings → Privacy & Security → Microphone → allow cue, then try again.');
+          ? 'Microphone permission was denied. Settings → Privacy & security → Microphone → allow apperture, then try again.'
+          : 'Microphone permission was denied. System Settings → Privacy & Security → Microphone → allow apperture, then try again.');
       } else if (name === 'NotReadableError' || name === 'TrackStartError') {
         showStatus('The microphone could not be started — another application may be using it exclusively. Close other apps using the mic and try again.');
       } else {
@@ -708,7 +708,7 @@
     if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
   }
 
-  // ---- capture: system/meeting audio (getDisplayMedia loopback, in cue's process) ----
+  // ---- capture: system/meeting audio (getDisplayMedia loopback, in apperture's process) ----
   let sysStream = null, sysCtx = null, sysWorklet = null, sysStarting = false;
   async function startSystemAudio() {
     // Called both from the stop-btn click (fresh user gesture for getDisplayMedia) and from the
@@ -717,7 +717,7 @@
     if (sysStream || sysStarting) return;
     sysStarting = true;
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-      cue.log('system audio unavailable: getDisplayMedia not supported');
+      apperture.log('system audio unavailable: getDisplayMedia not supported');
       showStatus('Meeting audio capture is not available on this device build.');
       return;
     }
@@ -727,9 +727,9 @@
       stream.getVideoTracks().forEach((t) => t.stop()); // we only want the audio
       const tracks = stream.getAudioTracks();
       if (!tracks.length) {
-        cue.log('system audio: no loopback track on this platform');
+        apperture.log('system audio: no loopback track on this platform');
         stream.getTracks().forEach((t) => t.stop());
-        showStatus(cue.platform === 'win32'
+        showStatus(apperture.platform === 'win32'
           ? 'No system-audio loopback track detected. Make sure "Share audio" is checked in the screen share dialog, and that your audio device is not in exclusive mode.'
           : 'No system-audio loopback track detected. Meeting audio needs macOS 14.4+ — your screen and microphone still work.');
         return;
@@ -741,15 +741,15 @@
       try {
         await sysCtx.audioWorklet.addModule('audio-worklet-processor.js');
         const source = sysCtx.createMediaStreamSource(new MediaStream(tracks));
-        sysWorklet = new AudioWorkletNode(sysCtx, 'cue-audio-processor');
+        sysWorklet = new AudioWorkletNode(sysCtx, 'apperture-audio-processor');
         sysWorklet.port.onmessage = (e) => {
-          cue.systemPcm(e.data);
+          apperture.systemPcm(e.data);
         };
         source.connect(sysWorklet);
-        cue.log('system audio: AudioWorklet capturing loopback');
+        apperture.log('system audio: AudioWorklet capturing loopback');
       } catch (workletErr) {
         // Fallback to ScriptProcessor
-        cue.log('system audio AudioWorklet failed, using ScriptProcessor: ' + workletErr.message);
+        apperture.log('system audio AudioWorklet failed, using ScriptProcessor: ' + workletErr.message);
         const sysNode = sysCtx.createMediaStreamSource(new MediaStream(tracks));
         const sysProc = sysCtx.createScriptProcessor(4096, 1, 1);
         const sink = sysCtx.createGain(); sink.gain.value = 0;
@@ -758,14 +758,14 @@
           const f = e.inputBuffer.getChannelData(0);
           const out = new Int16Array(f.length);
           for (let i = 0; i < f.length; i++) { const s = Math.max(-1, Math.min(1, f[i])); out[i] = s < 0 ? s * 0x8000 : s * 0x7fff; }
-          cue.systemPcm(out.buffer);
+          apperture.systemPcm(out.buffer);
         };
         sysWorklet = { _legacy: true, proc: sysProc, node: sysNode, sink };
       }
     } catch (err) {
       const message = err && err.message ? err.message : String(err);
-      cue.log('system audio error: ' + message);
-      showStatus('Meeting audio could not be started. Grant screen/audio access to cue and try again.');
+      apperture.log('system audio error: ' + message);
+      showStatus('Meeting audio could not be started. Grant screen/audio access to apperture and try again.');
     } finally {
       sysStarting = false;
     }
@@ -955,7 +955,7 @@
   }
 
   // ---- events from main --------------------------------------------------
-  cue.on('capture:state', ({ active, streaming, mode }) => {
+  apperture.on('capture:state', ({ active, streaming, mode }) => {
     setLiveDotState(active ? 'idle' : 'off');
     $('#stop-btn').classList.toggle('active', active);
     setListenIcon(active);
@@ -1033,7 +1033,7 @@
     composer.classList.remove('has-interim');
   }
   
-  cue.on('stt:interim', ({ channel, text }) => {
+  apperture.on('stt:interim', ({ channel, text }) => {
     setLiveDotState('transcribing');
     const el = getOrCreateInterimEl();
     const label = channel === 'them' ? 'Them' : 'You';
@@ -1046,7 +1046,7 @@
       showInterimInInput(text);
     }
   });
-  cue.on('stt:final', ({ channel, text }) => {
+  apperture.on('stt:final', ({ channel, text }) => {
     setLiveDotState('idle');
     // Clear interim when we get a final
     if (interimEl) { interimEl.textContent = ''; interimEl.classList.remove('show'); }
@@ -1054,8 +1054,8 @@
     clearInputInterim(); // FIX #12: Clear interim text from input area
     // sidebar: the final turn is added via the 'transcript' event below
   });
-  cue.on('stt:status', ({ channel, status, provider }) => {
-    cue.log(`[stt] ${provider || channel || 'unknown'} ${status}`);
+  apperture.on('stt:status', ({ channel, status, provider }) => {
+    apperture.log(`[stt] ${provider || channel || 'unknown'} ${status}`);
     const label = document.getElementById('stt-status');
     if (provider === 'local') {
       const localLabels = {
@@ -1100,10 +1100,10 @@
       label.hidden = false;
     }
   });
-  cue.on('vad:state', ({ channel, speaking }) => {
+  apperture.on('vad:state', ({ channel, speaking }) => {
     setLiveDotState(speaking ? 'speaking' : 'idle');
   });
-  cue.on('llm:start', ({ userBubble, small, category }) => {
+  apperture.on('llm:start', ({ userBubble, small, category }) => {
     hideEmptyState();
     responseCount++;
     if (responseCount > MAX_RESPONSES) {
@@ -1143,13 +1143,13 @@
     });
     setBusy(true);
   });
-  cue.on('llm:token', ({ text }) => appendToken(text));
-  cue.on('llm:done', () => { finalizeAi(); setBusy(false); });
-  cue.on('llm:error', ({ message }) => {
+  apperture.on('llm:token', ({ text }) => appendToken(text));
+  apperture.on('llm:done', () => { finalizeAi(); setBusy(false); });
+  apperture.on('llm:error', ({ message }) => {
     if (!aiEl) startAi(true);
     aiEl.dataset.raw = message; finalizeAi(); setBusy(false);
   });
-  cue.on('transcript', ({ channel, text }) => {
+  apperture.on('transcript', ({ channel, text }) => {
     if (!text || text.trim().length < 2 || /^[?!.,;:\-…]+$/.test(text.trim())) return;
     appendTranscriptHistoryTurn(channel, text, false);
     // Auto-fill the input box with Them (interviewer) speech
@@ -1163,10 +1163,10 @@
   });
   let statusTimer = null;
   function showStatus(message) {
-    let el = document.getElementById('cue-status');
+    let el = document.getElementById('apperture-status');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'cue-status';
+      el.id = 'apperture-status';
       // Insert into panel-main before the action row
       const panelMain = document.getElementById('panel-main');
       const actionRow = document.getElementById('action-row');
@@ -1183,8 +1183,8 @@
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => el.classList.remove('show'), 11000);
   }
-  cue.on('status', ({ message }) => {
-    cue.log('[status] ' + message);
+  apperture.on('status', ({ message }) => {
+    apperture.log('[status] ' + message);
     showStatus(message);
     if (sttState !== 'disconnected') {
       const lower = message.toLowerCase();
@@ -1251,14 +1251,14 @@
     banner.innerHTML =
       '<div class="mic-perm-text">' +
         '<strong>Microphone access required</strong><br>' +
-        'cue needs microphone permission to hear you during calls. Grant access in System Settings, then restart cue.' +
+        'apperture needs microphone permission to hear you during calls. Grant access in System Settings, then restart apperture.' +
       '</div>' +
       '<div class="mic-perm-actions"></div>';
     const actions = banner.querySelector('.mic-perm-actions');
-    if (cue.platform === 'darwin') {
+    if (apperture.platform === 'darwin') {
       const openBtn = document.createElement('button');
       openBtn.textContent = 'Open Microphone Settings';
-      openBtn.addEventListener('click', () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'));
+      openBtn.addEventListener('click', () => apperture.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'));
       actions.appendChild(openBtn);
     }
     const dismissBtn = document.createElement('button');
@@ -1347,13 +1347,13 @@
     $('#questions-to-ask').value = settings.questionsToAsk || '';
   }
 
-  // Whoever cue has been told it may answer questions for. Empty is the normal
+  // Whoever apperture has been told it may answer questions for. Empty is the normal
   // state — nothing appears here until something has asked and been allowed.
   async function fillAppLinkCallers() {
     const host = $('#applink-callers');
-    if (!host || !cue.appLinkState) return;
+    if (!host || !apperture.appLinkState) return;
     let state;
-    try { state = await cue.appLinkState(); } catch (_) { return; }
+    try { state = await apperture.appLinkState(); } catch (_) { return; }
     const callers = Object.entries((state && state.callers) || {});
     if (!callers.length) {
       host.innerHTML = '<div class="s-caller-empty">Nothing has asked yet.</div>';
@@ -1375,7 +1375,7 @@
       button.type = 'button';
       button.textContent = 'Forget';
       button.addEventListener('click', async () => {
-        await cue.appLinkRevoke(id);
+        await apperture.appLinkRevoke(id);
         fillAppLinkCallers();
       });
       row.append(label, button);
@@ -1385,7 +1385,7 @@
 
   const uploadResumeBtn = document.getElementById('upload-resume-btn');
   if (uploadResumeBtn) uploadResumeBtn.addEventListener('click', async () => {
-    const res = await cue.pickProfileDocument();
+    const res = await apperture.pickProfileDocument();
     if (!res || res.canceled) return;
     if (res.error) { showStatus('Resume import failed: ' + res.error); return; }
     $('#resume-text').value = res.text || '';
@@ -1395,7 +1395,7 @@
   });
   const uploadJdBtn = document.getElementById('upload-jd-btn');
   if (uploadJdBtn) uploadJdBtn.addEventListener('click', async () => {
-    const res = await cue.pickProfileDocument();
+    const res = await apperture.pickProfileDocument();
     if (!res || res.canceled) return;
     if (res.error) { showStatus('Job description import failed: ' + res.error); return; }
     $('#job-description').value = res.text || '';
@@ -1492,7 +1492,7 @@
     const status = $('#whisper-status');
     try {
       const previousSelection = $('#whisper-model').value || settings.localWhisper?.modelId || 'base.en';
-      whisperOverview = await cue.whisperModels();
+      whisperOverview = await apperture.whisperModels();
       const runtime = whisperOverview.runtime || {
         available: !!whisperOverview.runtimeReady,
         version: '',
@@ -1556,7 +1556,7 @@
     renderWhisperModelState();
     $('#whisper-status').textContent = `Downloading ${model.id}. You can cancel and resume later.`;
     try {
-      await cue.whisperModelDownload(model.id);
+      await apperture.whisperModelDownload(model.id);
       $('#whisper-status').textContent = `${model.id} downloaded and verified.`;
     } catch (error) {
       $('#whisper-status').textContent = error.message.includes('cancelled')
@@ -1569,7 +1569,7 @@
 
   $('#whisper-cancel').addEventListener('click', async () => {
     const model = getSelectedWhisperModel();
-    if (model) await cue.whisperModelCancel(model.id);
+    if (model) await apperture.whisperModelCancel(model.id);
   });
 
   $('#whisper-import').addEventListener('click', async () => {
@@ -1577,7 +1577,7 @@
     if (!model) return;
     $('#whisper-status').textContent = `Verifying imported ${model.id}…`;
     try {
-      const result = await cue.whisperModelImport(model.id);
+      const result = await apperture.whisperModelImport(model.id);
       $('#whisper-status').textContent = result.cancelled ? 'Import cancelled.' : `${model.id} imported and verified.`;
     } catch (error) {
       $('#whisper-status').textContent = `Import failed: ${error.message}`;
@@ -1590,7 +1590,7 @@
     const model = getSelectedWhisperModel();
     if (!model || !window.confirm(`Delete the ${model.id} model (${formatBytes(model.bytes)}) from this computer?`)) return;
     try {
-      await cue.whisperModelDelete(model.id);
+      await apperture.whisperModelDelete(model.id);
       $('#whisper-status').textContent = `${model.id} deleted.`;
     } catch (error) {
       $('#whisper-status').textContent = `Delete failed: ${error.message}`;
@@ -1599,7 +1599,7 @@
     }
   });
 
-  cue.on('whisper:download-progress', (progress) => {
+  apperture.on('whisper:download-progress', (progress) => {
     if (!whisperOverview) return;
     const model = whisperOverview.models.find((candidate) => candidate.id === progress.modelId);
     if (!model) return;
@@ -1612,7 +1612,7 @@
       $('#whisper-model-detail').textContent = `${formatBytes(progress.receivedBytes)} of ${formatBytes(progress.totalBytes)}`;
     }
   });
-  cue.on('whisper:models-changed', () => refreshWhisperModels());
+  apperture.on('whisper:models-changed', () => refreshWhisperModels());
 
   async function saveSettings() {
     // Keys
@@ -1650,7 +1650,7 @@
     settings.salaryTarget = $('#salary-target').value.trim();
     settings.questionsToAsk = $('#questions-to-ask').value.trim();
     try {
-      settings = await cue.settingsSet(settings);
+      settings = await apperture.settingsSet(settings);
       $('#s-status').textContent = statusText();
       updatePrepStatus();
       updateSmartTooltip();
@@ -1676,7 +1676,7 @@
   let isDragging = false;
   function setIgnore(v) {
     if (isDragging) return; // never flip click-through mid-drag
-    if (v !== ignoring) { ignoring = v; cue.setIgnoreMouse(v); }
+    if (v !== ignoring) { ignoring = v; apperture.setIgnoreMouse(v); }
   }
   document.addEventListener('mousemove', (e) => {
     if (isDragging) return;
@@ -1694,13 +1694,13 @@
   }
   function onDragMove(e) {
     if (!isDragging) return;
-    cue.dragMove(e.screenX, e.screenY);
+    apperture.dragMove(e.screenX, e.screenY);
   }
   function onDragEnd() {
     if (!isDragging) return;
     isDragging = false;
     document.body.classList.remove('is-dragging');
-    cue.dragEnd();
+    apperture.dragEnd();
     window.removeEventListener('mousemove', onDragMove, true);
     window.removeEventListener('mouseup', onDragEnd, true);
     window.removeEventListener('blur', onDragEnd, true);
@@ -1711,10 +1711,10 @@
     // Keep mouse events on the window so drag survives click-through.
     setIgnore(false);
     ignoring = false;
-    cue.setIgnoreMouse(false);
+    apperture.setIgnoreMouse(false);
     isDragging = true;
     document.body.classList.add('is-dragging');
-    cue.dragStart(e.screenX, e.screenY);
+    apperture.dragStart(e.screenX, e.screenY);
     window.addEventListener('mousemove', onDragMove, true);
     window.addEventListener('mouseup', onDragEnd, true);
     window.addEventListener('blur', onDragEnd, true);
@@ -1722,7 +1722,7 @@
   }, true);
 
   // ---- assistant access request ------------------------------------------
-  // Shown here rather than as a native dialog because cue hides its dock icon:
+  // Shown here rather than as a native dialog because apperture hides its dock icon:
   // an OS panel from an accessory app never comes forward and cannot be
   // clicked. Note the scrim is registered in the click-through selector above
   // and in styles.css — without both, this window stays transparent to the
@@ -1732,12 +1732,12 @@
 
   function answerConsent(allowed) {
     if (!pendingConsentId) return;
-    cue.appLinkConsentRespond(pendingConsentId, allowed);
+    apperture.appLinkConsentRespond(pendingConsentId, allowed);
     pendingConsentId = null;
     consentScrim.classList.add('hidden');
   }
 
-  cue.on('applink:consent-request', (request) => {
+  apperture.on('applink:consent-request', (request) => {
     pendingConsentId = request.id;
     $('#cs-title').textContent = request.message;
     $('#cs-body').textContent = request.detail;
@@ -1761,19 +1761,19 @@
   // ---- onboarding / first-run tutorial -----------------------------------
   const obScrim = $('#onboard-scrim');
   const permissionHelp = isWindows
-    ? 'cue needs permission to see and hear. Open Windows Privacy & security settings, allow <strong>Microphone</strong> and <strong>Screen recording</strong> for cue, then come back here.'
+    ? 'apperture needs permission to see and hear. Open Windows Privacy & security settings, allow <strong>Microphone</strong> and <strong>Screen recording</strong> for apperture, then come back here.'
     : isMac
-      ? 'cue needs two macOS permissions. Click each button, turn <strong>cue</strong> ON in the window that opens, then come back here.'
-      : 'cue needs microphone and screen-capture access. Allow them when your desktop prompts you, then come back here.';
+      ? 'apperture needs two macOS permissions. Click each button, turn <strong>apperture</strong> ON in the window that opens, then come back here.'
+      : 'apperture needs microphone and screen-capture access. Allow them when your desktop prompts you, then come back here.';
   const permissionButtons = isWindows
     ? [
-        { label: 'Open Microphone settings', action: () => cue.openPane('ms-settings:privacy-microphone') },
-        { label: 'Open Screen recording settings', action: () => cue.openPane('ms-settings:privacy-screenrecorder') }
+        { label: 'Open Microphone settings', action: () => apperture.openPane('ms-settings:privacy-microphone') },
+        { label: 'Open Screen recording settings', action: () => apperture.openPane('ms-settings:privacy-screenrecorder') }
       ]
     : isMac
       ? [
-          { label: 'Open Microphone settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone') },
-          { label: 'Open Screen Recording settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture') }
+          { label: 'Open Microphone settings', action: () => apperture.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone') },
+          { label: 'Open Screen Recording settings', action: () => apperture.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture') }
         ]
       : [];
   const assistShortcut = isWindows ? '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>' : (isMac ? '<span class="kbd">⌘</span> <span class="kbd">↵</span>' : '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>');
@@ -1782,30 +1782,30 @@
   const OB_STEPS = [
     {
       icon: 'logo',
-      title: 'Welcome to cue',
-      body: 'cue is a private AI copilot that floats over your screen. It can <strong>see your screen</strong>, <strong>hear your meetings</strong>, and help you answer questions or solve coding problems — while staying hidden from most screen shares.<br><br>This quick guide gets you running in about a minute.'
+      title: 'Welcome to apperture',
+      body: 'apperture is a private AI copilot that floats over your screen. It can <strong>see your screen</strong>, <strong>hear your meetings</strong>, and help you answer questions or solve coding problems — while staying hidden from most screen shares.<br><br>This quick guide gets you running in about a minute.'
     },
     {
       icon: 'shield',
-      title: 'Allow cue to see & hear',
+      title: 'Allow apperture to see & hear',
       body: permissionHelp + '<ul><li><strong>Microphone</strong> — to hear you</li><li><strong>Screen recording</strong> — to see your screen and hear meeting audio</li></ul>',
       buttons: permissionButtons
     },
     {
       icon: 'key',
       title: 'Connect an AI provider',
-      body: 'cue uses <strong>your own</strong> API key — pick <span class="hl">OpenAI</span>, <span class="hl">Anthropic</span>, <span class="hl">Google Gemini</span>, <span class="hl">OpenRouter</span>, or <span class="hl">Azure AI Foundry</span>. Get a key from your provider, then paste it into cue\'s Settings (OpenRouter also reads <span class="hl">OPENROUTER_API_KEY</span> from the environment).<br><br><strong>Tip:</strong> For the <em>best</em> real-time listening, add a <span class="hl">Deepgram</span> key (lowest latency streaming transcription). Otherwise, an OpenAI key enables streaming via the Realtime API, and Gemini/Whisper work as batch fallbacks.',
-      buttons: [{ label: 'Open cue Settings', action: () => { finishOnboard(); openSettings(); } }]
+      body: 'apperture uses <strong>your own</strong> API key — pick <span class="hl">OpenAI</span>, <span class="hl">Anthropic</span>, <span class="hl">Google Gemini</span>, <span class="hl">OpenRouter</span>, or <span class="hl">Azure AI Foundry</span>. Get a key from your provider, then paste it into apperture\'s Settings (OpenRouter also reads <span class="hl">OPENROUTER_API_KEY</span> from the environment).<br><br><strong>Tip:</strong> For the <em>best</em> real-time listening, add a <span class="hl">Deepgram</span> key (lowest latency streaming transcription). Otherwise, an OpenAI key enables streaming via the Realtime API, and Gemini/Whisper work as batch fallbacks.',
+      buttons: [{ label: 'Open apperture Settings', action: () => { finishOnboard(); openSettings(); } }]
     },
     {
       icon: 'eye-off',
       title: 'Stay hidden in Zoom',
-      body: 'cue is hidden from most screen shares automatically (Google Meet, Teams, QuickTime — nothing to do). <strong>Zoom needs one setting:</strong><br><br>Zoom → <span class="hl">Settings</span> → <span class="hl">Share Screen</span> → <span class="hl">Advanced</span> → <strong>Screen capture mode</strong> → choose <strong>“Advanced capture with window filtering.”</strong><br><br>Avoid “<strong>without</strong> window filtering” — that mode reveals cue.'
+      body: 'apperture is hidden from most screen shares automatically (Google Meet, Teams, QuickTime — nothing to do). <strong>Zoom needs one setting:</strong><br><br>Zoom → <span class="hl">Settings</span> → <span class="hl">Share Screen</span> → <span class="hl">Advanced</span> → <strong>Screen capture mode</strong> → choose <strong>“Advanced capture with window filtering.”</strong><br><br>Avoid “<strong>without</strong> window filtering” — that mode reveals apperture.'
     },
     {
       icon: 'check',
       title: 'You’re all set',
-      body: 'How to use cue:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click the <strong>listen</strong> button in the top bar (mic icon) to start hearing a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>cue logo</strong>. Quit with ' + quitShortcut + '.'
+      body: 'How to use apperture:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click the <strong>listen</strong> button in the top bar (mic icon) to start hearing a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>apperture logo</strong>. Quit with ' + quitShortcut + '.'
     }
   ];
   let obIndex = 0;
@@ -1825,7 +1825,7 @@
   function showOnboard() { obIndex = 0; renderOnboard(); obScrim.classList.remove('hidden'); setIgnore(false); }
   async function finishOnboard() {
     obScrim.classList.add('hidden');
-    if (settings && !settings.onboarded) { settings.onboarded = true; await cue.settingsSet({ onboarded: true }); }
+    if (settings && !settings.onboarded) { settings.onboarded = true; await apperture.settingsSet({ onboarded: true }); }
   }
   $('#ob-next').addEventListener('click', () => { if (obIndex === OB_STEPS.length - 1) finishOnboard(); else { obIndex++; renderOnboard(); } });
   $('#ob-back').addEventListener('click', () => { if (obIndex > 0) { obIndex--; renderOnboard(); } });
@@ -1834,8 +1834,8 @@
 
   // ---- boot --------------------------------------------------------------
   (async function boot() {
-    settings = await cue.settingsGet();
-    const platformInfo = await cue.platformInfo();
+    settings = await apperture.settingsGet();
+    const platformInfo = await apperture.platformInfo();
 
     // R4: shortcut hints
     const sayHintEl = document.getElementById('say-shortcut-hint');
@@ -1856,7 +1856,7 @@
       // Windows 10: update the onboarding screen recording button to be more helpful
       const ob = OB_STEPS[1];
       ob.buttons = ob.buttons.filter((b) => !b.label.toLowerCase().includes('screen'));
-      ob.body = 'cue needs microphone permission to hear you. Click the button below to open Windows microphone settings and allow cue.<br><br><strong>Screen capture works automatically on Windows 10</strong> — no additional permission needed.<ul><li><strong>Microphone</strong> — to hear you</li><li><strong>Screen recording</strong> — works automatically on Windows 10</li></ul>';
+      ob.body = 'apperture needs microphone permission to hear you. Click the button below to open Windows microphone settings and allow apperture.<br><br><strong>Screen capture works automatically on Windows 10</strong> — no additional permission needed.<ul><li><strong>Microphone</strong> — to hear you</li><li><strong>Screen recording</strong> — works automatically on Windows 10</li></ul>';
     }
 
     smartBtn.classList.toggle('on', !!settings.smart);
@@ -1871,7 +1871,7 @@
       : '<span class="keycap">⌘</span><span class="keycap">⏎</span>';
     placeholder.innerHTML = 'Ask about your screen or conversation, or ' + assistKeys + ' for Assist';
 
-    const st = await cue.captureState();
+    const st = await apperture.captureState();
     $('#live-dot').classList.toggle('off', !st.active);
     $('#stop-btn').classList.toggle('active', st.active);
     setListenIcon(!!st.active);

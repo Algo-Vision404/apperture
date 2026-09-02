@@ -1,4 +1,4 @@
-// What Iris is allowed to know about cue.
+// What Iris is allowed to know about apperture.
 //
 // Split out from applink.js so it can be tested without Electron, and because
 // it is the file where a privacy mistake would actually happen. Everything
@@ -22,7 +22,7 @@ function describeState({ state, transcript, settings, sttDisabled, shortcuts, wi
     busy: state.busy,
     transcribing: { you: state.transcribing.you, them: state.transcribing.them },
 
-    // The single most useful field here. When this is true cue looks alive and
+    // The single most useful field here. When this is true apperture looks alive and
     // silently is not, and until now nothing outside the process could see it.
     transcriptionDisabled: !!sttDisabled,
 
@@ -36,7 +36,7 @@ function describeState({ state, transcript, settings, sttDisabled, shortcuts, wi
     hasResumeContext: !!(settings.resumeContext && settings.resumeContext.length),
 
     // A global shortcut another app registered first is a classic silent break:
-    // the user presses the key, nothing happens, and cue never knew.
+    // the user presses the key, nothing happens, and apperture never knew.
     shortcuts: shortcuts || {},
 
     windowAlive: !!windowAlive,
@@ -46,7 +46,7 @@ function describeState({ state, transcript, settings, sttDisabled, shortcuts, wi
 /**
  * Word a consent sheet from what can be proven, not from what was claimed.
  *
- * On the Node transport cue cannot read the peer's credentials, so the caller's
+ * On the Node transport apperture cannot read the peer's credentials, so the caller's
  * name is a claim. A sheet that presents a claim as a fact is worse than no
  * sheet at all, so this returns the hedged wording unless the peer's code
  * signature was actually verified.
@@ -58,15 +58,15 @@ function consentCopy(request) {
 
   return {
     trusted,
-    message: action ? `${who} wants to control cue.` : `${who} wants to see what cue is doing.`,
+    message: action ? `${who} wants to control apperture.` : `${who} wants to see what apperture is doing.`,
     detail:
       (action
         ? 'It would be able to start and stop listening. '
-        : 'It would be able to read cue’s status, recent warnings and errors — never your transcript, your résumé or your API keys. ') +
+        : 'It would be able to read apperture’s status, recent warnings and errors — never your transcript, your résumé or your API keys. ') +
       (trusted
         ? 'Its code signature has been verified.'
-        : 'cue cannot verify what this program really is; anything running under your account could make the same claim.') +
-      '\n\nYou can change this later in cue’s settings.',
+        : 'apperture cannot verify what this program really is; anything running under your account could make the same claim.') +
+      '\n\nYou can change this later in apperture’s settings.',
     allowLabel: action ? 'Allow control' : 'Allow',
   };
 }

@@ -27,7 +27,7 @@ const { locateWhisperRuntime } = require('./src/whisper-runtime');
 const { LocalWhisperTranscriber } = require('./src/local-whisper-transcriber');
 
 let win = null;
-// Which global shortcuts cue actually holds. `globalShortcut.register` returns
+// Which global shortcuts apperture actually holds. `globalShortcut.register` returns
 // false when another application already owns the combination, and nothing used
 // to look at that — so the only symptom was a key that did nothing. Iris reads
 // this and can say which key is taken instead of guessing from a screenshot.
@@ -227,13 +227,13 @@ function createWindow() {
   // Fix 2: Only call setContentProtection if the OS supports it.
   // On Windows, WDA_EXCLUDEFROMCAPTURE requires build 19041+ (Windows 10 May 2020 Update).
   // On older builds we skip it silently to avoid a no-op and send a warning to the renderer.
-  const shouldProtect = !process.env.CUE_NO_PROTECT;
+  const shouldProtect = !process.env.APPERTURE_NO_PROTECT;
   if (shouldProtect) {
     if (WIN_SUPPORTS_CONTENT_PROTECTION) {
       win.setContentProtection(true);
     } else {
       // Will notify the renderer after it loads
-      console.log(`[cue] Windows build ${WIN_BUILD} < 19041 — setContentProtection not supported. Window may appear in screen shares.`);
+      console.log(`[apperture] Windows build ${WIN_BUILD} < 19041 — setContentProtection not supported. Window may appear in screen shares.`);
     }
   }
 
@@ -267,7 +267,7 @@ function createWindow() {
     }
   });
   win.webContents.on('render-process-gone', (_e, d) => {
-    console.log('[cue] renderer gone', JSON.stringify(d));
+    console.log('[apperture] renderer gone', JSON.stringify(d));
     recordEvent({ level: 'fatal', event: 'renderer_gone', code: d && d.reason, msg: 'renderer process ended: ' + JSON.stringify(d), frame: 'BrowserWindow' });
   });
 }
@@ -311,7 +311,7 @@ async function flushChannel(channel) {
 function handleSttError(err, settings) {
   console.log('[stt] error', err.provider, err.status, err.code, err.message);
   // Recorded before the early return, because the second and hundredth
-  // occurrence still tell you the state cue is stuck in.
+  // occurrence still tell you the state apperture is stuck in.
   recordEvent({
     level: 'error',
     event: 'stt_rejected',
@@ -420,8 +420,8 @@ function routeAudio(channel, pcmBuffer) {
 
 // -------- capture toggle --------
 // Mic + system audio are both captured in the RENDERER (getUserMedia for the mic,
-// getDisplayMedia loopback for system audio) so they run inside cue's own process
-// and use cue's own Screen-Recording grant — no separate helper binary to authorize.
+// getDisplayMedia loopback for system audio) so they run inside apperture's own process
+// and use apperture's own Screen-Recording grant — no separate helper binary to authorize.
 async function setCapturing(active) {
   if (active === state.capturing) return state.capturing;
 
@@ -432,7 +432,7 @@ async function setCapturing(active) {
       try {
         await startLocalWhisper(settings);
         state.capturing = true;
-        console.log('[cue] capture started, mode: local');
+        console.log('[apperture] capture started, mode: local');
         send('capture:state', { active: true, streaming: false, mode: 'local' });
         return true;
       } catch (error) {
@@ -456,7 +456,7 @@ async function setCapturing(active) {
     if (!streaming) {
       startFlushLoop();
     }
-    console.log('[cue] capture started, mode:', streaming ? 'streaming' : 'batch');
+    console.log('[apperture] capture started, mode:', streaming ? 'streaming' : 'batch');
     send('capture:state', { active: true, streaming: streamingMode, mode: streaming ? 'streaming' : 'batch' });
     return true;
   }
@@ -514,9 +514,9 @@ async function runFeature(mode, userText) {
       catch (e) {
         recordEvent({ level: 'error', event: 'screen_capture_failed', msg: e && e.message ? e.message : String(e), frame: 'captureScreenshot', context: { mode } });
         const message = process.platform === 'darwin'
-          ? 'Screen capture needs permission — grant Screen Recording to cue in System Settings.'
+          ? 'Screen capture needs permission — grant Screen Recording to apperture in System Settings.'
           : process.platform === 'win32'
-            ? 'Screen capture failed. Make sure cue is not blocked by Windows privacy or security software, then try again.'
+            ? 'Screen capture failed. Make sure apperture is not blocked by Windows privacy or security software, then try again.'
             : 'Screen capture failed. Check your desktop capture permissions, then try again.';
         send('status', { message });
       }
@@ -813,7 +813,7 @@ function launchApp() {
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowMedia(permission));
 
   // System-audio loopback for getDisplayMedia: hand back a screen source with 'loopback'
-  // audio so the renderer can capture what's playing (Zoom/Meet) using cue's own grant.
+  // audio so the renderer can capture what's playing (Zoom/Meet) using apperture's own grant.
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
       if (!sources.length) return callback();

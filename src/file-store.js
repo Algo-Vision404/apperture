@@ -5,8 +5,8 @@ const { normalizeBaseUrl } = require('./openai-compatible');
 
 const MAX_AI_RULES_CHARS = 2000;
 const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
-const DATA_PATH = process.env.CUE_DATA_PATH
-  || path.join(process.env.HOME || '/tmp', '.cue-web', 'cue-data.json');
+const DATA_PATH = process.env.APPERTURE_DATA_PATH
+  || path.join(process.env.HOME || '/tmp', '.apperture-web', 'apperture-data.json');
 
 const DEFAULTS = {
   provider: 'openrouter',
@@ -87,7 +87,7 @@ function save() {
     ensureDir(DATA_PATH);
     fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
   } catch (e) {
-    console.error('[cue-web] failed to save settings:', e.message);
+    console.error('[apperture-web] failed to save settings:', e.message);
   }
 }
 

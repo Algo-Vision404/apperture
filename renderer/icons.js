@@ -1,11 +1,11 @@
-// cue icon system — custom Signal Desk glyphs (24×24 viewBox).
+// apperture icon system — custom Signal Desk glyphs (24×24 viewBox).
 // Optical balance for dark glass overlays: 1.75 stroke, round caps, sparse fills.
 // icon(name, { size, stroke }) -> SVG markup string.
 (function () {
   const NS = 'http://www.w3.org/2000/svg';
 
   const STROKE = {
-    // Assist — four-point cue spark + satellite ticks
+    // Assist — four-point spark + satellite ticks
     sparkles:
       '<path d="M12 2.8 13.35 8.55a1.55 1.55 0 0 0 1.0 1.0L20 10.9l-5.65 1.35a1.55 1.55 0 0 0-1.0 1.0L12 18.9l-1.35-5.65a1.55 1.55 0 0 0-1.0-1.0L4 10.9l5.65-1.35a1.55 1.55 0 0 0 1.0-1.0Z"/>' +
       '<path d="M18.4 3.6v2.8M19.8 5h-2.8"/>' +
@@ -19,7 +19,7 @@
       '<path d="M7.9 3.9v2.3M9.05 5.05H6.75"/>' +
       '<path d="M19.7 13.9v2.3M20.85 15.05h-2.3"/>',
 
-    // Follow-up — soft bubble with cue dashes
+    // Follow-up — soft bubble with signal dashes
     'message-circle':
       '<path d="M19.85 12.15a7.85 7.85 0 0 1-11.2 7.05L3.9 20.5l1.5-4.4A7.85 7.85 0 1 1 19.85 12.15Z"/>' +
       '<path d="M9 11.9h6M9 9.15h4.1"/>',

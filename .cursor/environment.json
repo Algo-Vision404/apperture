@@ -1,17 +1,17 @@
 {
-  "name": "cue",
+  "name": "apperture",
   "install": "npm install",
   "start": "npm run web",
   "terminals": [
     {
-      "name": "cue-web",
+      "name": "apperture-web",
       "command": "npm run web",
-      "description": "cue browser UI on port 43142"
+      "description": "apperture browser UI on port 43142"
     }
   ],
   "ports": [
     {
-      "name": "cue",
+      "name": "apperture",
       "port": 43142
     }
   ]

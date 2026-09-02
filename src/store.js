@@ -4,7 +4,7 @@ const path = require('path');
 const { app } = require('electron');
 const { normalizeBaseUrl } = require('./openai-compatible');
 
-const FILE = path.join(app.getPath('userData'), 'cue-data.json');
+const FILE = path.join(app.getPath('userData'), 'apperture-data.json');
 
 // Cap on the user's custom response rules. Generous but bounded: anything longer
 // should live in a real prompt file, not in a settings field.

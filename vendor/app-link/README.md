@@ -16,8 +16,8 @@ Zero dependencies, no build step. Vendor it, don't install it — see
 const { AppLinkServer } = require("./vendor/app-link");
 
 const link = new AppLinkServer({
-  appId: "com.cue.overlay",        // the real bundle id, read off a build
-  appSlug: "cue",                  // the publik catalog slug
+  appId: "com.apperture.overlay",  // the real bundle id, read off a build
+  appSlug: "apperture",            // the publik catalog slug
   appVersion: app.getVersion(),
   stateProvider: () => ({
     listening: capture.isRunning(),

@@ -55,7 +55,7 @@ class EventRing {
    * @param {object} options
    * @param {number} [options.capacity] Events kept. 256 is a few hundred KB at
    *   most and covers far more history than any one bug report needs.
-   * @param {string} options.app  Catalog slug, e.g. "cue".
+   * @param {string} options.app  Catalog slug, e.g. "apperture".
    * @param {string} options.appVersion
    */
   constructor({ capacity = 256, app, appVersion, os: osName, arch } = {}) {

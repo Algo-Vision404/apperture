@@ -15,10 +15,10 @@ const OPENROUTER_FALLBACK_MODELS = [
   'openrouter/free'
 ];
 const OPENROUTER_HEADERS = {
-  'HTTP-Referer': 'https://github.com/Blueturboguy07/cue',
-  'X-Title': 'cue'
+  'HTTP-Referer': 'https://github.com/Blueturboguy07/apperture',
+  'X-Title': 'apperture'
 };
-// Older cue builds defaulted to Nvidia Ultra free, which is frequently at
+// Older apperture builds defaulted to Nvidia Ultra free, which is frequently at
 // capacity. Migrate that sticky setting to a chat-oriented free model on read.
 const LEGACY_OPENROUTER_MODEL_RE = /^(nvidia\/nemotron-3-ultra-550b-a55b:free|openrouter\/free)$/i;
 // gemini-2.0-flash was Google's default here until it was deprecated (Feb 2026)
@@ -115,7 +115,7 @@ function formatProviderErrorMessage(error, provider, model) {
   const rawMessage = (error && (error.message || String(error))) || '';
 
   if (isUpstreamOverloadError(error)) {
-    return `${label} is temporarily overloaded upstream${model ? ` for "${model}"` : ''}. Wait a moment and try again, or pick another free model in Settings (cue retries fallbacks automatically).`;
+    return `${label} is temporarily overloaded upstream${model ? ` for "${model}"` : ''}. Wait a moment and try again, or pick another free model in Settings (apperture retries fallbacks automatically).`;
   }
 
   if (isQuotaError(error)) {
@@ -126,7 +126,7 @@ function formatProviderErrorMessage(error, provider, model) {
 
   if (isNotFoundError(error)) {
     const modelHint = model ? ` "${model}"` : '';
-    return `${label} model${modelHint} is unavailable (404) — it may have been renamed, retired by the provider, or misspelled. Open Settings and pick a current model for ${label} (or clear the field to use cue's default), then try again.`;
+    return `${label} model${modelHint} is unavailable (404) — it may have been renamed, retired by the provider, or misspelled. Open Settings and pick a current model for ${label} (or clear the field to use apperture's default), then try again.`;
   }
 
   return rawMessage || 'Unknown LLM error.';
@@ -228,7 +228,7 @@ async function streamOpenAI({ apiKey, baseURL, model, system, turns, imageDataUr
   }
   sanitize.end();
   if (!full.trim() && /tool_call_start|tool_call|google\s*\(/i.test(raw)) {
-    throw new Error('The model tried to call a web-search tool instead of answering. Retry — cue blocks tool calls.');
+    throw new Error('The model tried to call a web-search tool instead of answering. Retry — apperture blocks tool calls.');
   }
   return full;
 }
@@ -455,7 +455,7 @@ function createLLM(settings) {
             .slice(0, 3);
           const extraBody = {
             models: fallbacks,
-            // cue never runs tools — stop agentic free models from emitting google(...) etc.
+            // apperture never runs tools — stop agentic free models from emitting google(...) etc.
             tool_choice: 'none'
           };
           // Reasoning only on models that advertise it — free-router fallbacks often do not.

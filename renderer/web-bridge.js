@@ -1,4 +1,4 @@
-/* cue web bridge — real backend client (no mock LLM replies).
+/* apperture web bridge — real backend client (no mock LLM replies).
    Talks to scripts/web-runner.js: live settings + streamed OpenRouter/LLM asks.
    Listening uses the browser Web Speech API for real-time mic transcription. */
 (function () {
@@ -10,7 +10,7 @@
 
   function emit(ch, data) {
     (listeners[ch] || []).forEach(function (cb) {
-      try { cb(data); } catch (e) { console.error('[cue]', e); }
+      try { cb(data); } catch (e) { console.error('[apperture]', e); }
     });
   }
 
@@ -34,7 +34,7 @@
   function syncTranscript(extra) {
     const body = extra || { turns: transcriptTurns };
     return api('/api/transcript', { method: 'POST', body: JSON.stringify(body) }).catch(function (e) {
-      console.warn('[cue] transcript sync failed', e.message);
+      console.warn('[apperture] transcript sync failed', e.message);
     });
   }
 
@@ -177,7 +177,7 @@
   const isMacHost = /mac/i.test(uaPlat) && !isWin;
   const platform = isWin ? 'win32' : (isMacHost ? 'darwin' : 'linux');
 
-  window.cue = {
+  window.apperture = {
     platform: platform,
     settingsGet: async function () { return api('/api/settings'); },
     settingsSet: async function (patch) {
@@ -263,12 +263,12 @@
     pickProfileDocument: async function () { return { ok: false, error: 'File pick needs Electron' }; },
     quit: function () {
       stopSpeechRecognition();
-      document.body.innerHTML = '<div style="font:600 18px Outfit,sans-serif;padding:40px;color:#F0D78A;background:#0c0e12;min-height:100vh">cue web session ended. Refresh to reopen.</div>';
+      document.body.innerHTML = '<div style="font:600 18px Outfit,sans-serif;padding:40px;color:#F0D78A;background:#0c0e12;min-height:100vh">apperture web session ended. Refresh to reopen.</div>';
     },
     permissionsCheck: async function () { return { mic: 'granted', screen: 'granted' }; },
     permissionsRequest: async function () { return true; },
     permissionsContinue: function () {},
-    log: function (msg) { console.log('[cue]', msg); },
+    log: function (msg) { console.log('[apperture]', msg); },
     on: function (channel, cb) {
       (listeners[channel] = listeners[channel] || []).push(cb);
     }

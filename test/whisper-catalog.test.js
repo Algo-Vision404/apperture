@@ -35,7 +35,7 @@ test('defines runtime targets for Windows, Linux, and both macOS architectures',
 });
 
 test('locates packaged and prepared development runtimes without downloading code', (context) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cue-runtime-locator-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apperture-runtime-locator-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
   const resourcesPath = path.join(root, 'resources');

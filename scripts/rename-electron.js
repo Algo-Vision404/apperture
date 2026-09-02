@@ -14,7 +14,7 @@ const pathTxt = path.join(__dirname, '..', 'node_modules', 'electron', 'path.txt
 const target  = path.join(distDir, DISPLAY_NAME);
 
 // ── Step 1: Get the source exe (original electron.exe or any previous alias) ─
-const candidates = ['electron.exe', 'RuntimeBroker.exe', 'SearchHost.exe', 'cue.exe'];
+const candidates = ['electron.exe', 'RuntimeBroker.exe', 'SearchHost.exe', 'apperture.exe', 'cue.exe'];
 let src = null;
 for (const name of candidates) {
   const p = path.join(distDir, name);

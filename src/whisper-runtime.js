@@ -14,7 +14,10 @@ function locateWhisperRuntime({
   const target = getRuntimeTarget(platform, architecture);
   const candidates = [];
 
-  if (environment.CUE_WHISPER_RUNTIME) {
+  if (environment.APPERTURE_WHISPER_RUNTIME) {
+    candidates.push(path.resolve(environment.APPERTURE_WHISPER_RUNTIME));
+  } else if (environment.CUE_WHISPER_RUNTIME) {
+    // Legacy env name from the pre-rename build.
     candidates.push(path.resolve(environment.CUE_WHISPER_RUNTIME));
   }
   if (isPackaged && resourcesPath) {

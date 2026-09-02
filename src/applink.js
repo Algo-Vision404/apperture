@@ -1,12 +1,12 @@
-// The publik app link: how Iris asks cue what it is doing.
+// The publik app link: how Iris asks apperture what it is doing.
 //
-// Before this, an assistant helping someone with cue could only see what was on
+// Before this, an assistant helping someone with apperture could only see what was on
 // screen and whatever had already been written to a log file. Neither answers
 // the question people actually report — "it isn't listening any more" — because
 // the reason is in memory: a 403 from the speech model, a shortcut another app
 // grabbed first, a Screen Recording grant that was never given.
 //
-// So cue answers questions instead. Nothing is exposed until the user says yes,
+// So apperture answers questions instead. Nothing is exposed until the user says yes,
 // and the transcript never leaves this process; see `describeState` below.
 //
 // The library lives in vendor/app-link and is maintained in the publik repo at
@@ -23,15 +23,15 @@ let consentSeq = 0;
 const CONSENT_TIMEOUT_MS = 120_000;
 
 /**
- * Ask inside cue's own window.
+ * Ask inside apperture's own window.
  *
  * The first version of this used dialog.showMessageBox, and it was unusable:
- * cue calls app.dock.hide(), so it is an accessory application and never
+ * apperture calls app.dock.hide(), so it is an accessory application and never
  * becomes active on its own. The panel appeared and then would not take a
  * click, because the app it belonged to was not frontmost and nothing was
  * bringing it forward.
  *
- * cue's own window has none of that problem, matches the rest of the app, and
+ * apperture's own window has none of that problem, matches the rest of the app, and
  * carries setContentProtection — so a consent prompt does not show up in a
  * screen share, which for this particular prompt is the right default.
  */
@@ -57,7 +57,7 @@ function askInWindow(win, copy, scope) {
     ipcMain.on('applink:consent-response', onResponse);
     win.once('closed', onClosed);
 
-    // cue deliberately never steals focus — except here. A question about who
+    // apperture deliberately never steals focus — except here. A question about who
     // may read your screen activity is the one thing that should interrupt.
     if (!win.isVisible()) win.show();
     app.focus({ steal: true });
@@ -90,16 +90,16 @@ async function requestConsent(request, deps) {
 
 /**
  * @param {object} deps  Live references from main.js — not a snapshot, so
- *   `get_state` reflects the moment it is asked rather than the moment cue
+ *   `get_state` reflects the moment it is asked rather than the moment apperture
  *   started.
  */
 function startAppLink(deps) {
   if (link) return link;
 
   link = new AppLinkServer({
-    appId: 'com.cue.overlay', // Matches electron-builder.cjs. Read off a build, not guessed.
-    appSlug: 'cue',
-    appName: 'cue',
+    appId: 'com.apperture.overlay', // Matches electron-builder.cjs. Read off a build, not guessed.
+    appSlug: 'apperture',
+    appName: 'apperture',
     appVersion: app.getVersion(),
     stateProvider: () => describeState(deps.snapshot()),
     onConsentRequest: (request) => requestConsent(request, deps),
@@ -129,9 +129,9 @@ function startAppLink(deps) {
   });
 
   link.start().catch((error) => {
-    // A link that will not start must never stop cue from starting. The app
+    // A link that will not start must never stop apperture from starting. The app
     // worked without this yesterday.
-    console.log('[cue] app link unavailable:', error && error.message);
+    console.log('[apperture] app link unavailable:', error && error.message);
     link = null;
   });
 

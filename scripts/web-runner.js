@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Real-time browser runner for cue.
+ * Real-time browser runner for apperture.
  * Serves the renderer and a live backend: settings + OpenRouter/LLM streaming.
  * No mock LLM replies — asks hit the real provider (OPENROUTER_API_KEY or Settings).
  */
@@ -14,8 +14,8 @@ const { createLLM } = require('../src/llm');
 const { MODES } = require('../src/prompts');
 const { buildInterviewContext, detectCategory } = require('../src/interview-context');
 
-const PORT = Number(process.env.CUE_WEB_PORT || 43142);
-const HOST = process.env.CUE_WEB_HOST || '0.0.0.0';
+const PORT = Number(process.env.APPERTURE_WEB_PORT || 43142);
+const HOST = process.env.APPERTURE_WEB_HOST || '0.0.0.0';
 const ROOT = path.join(__dirname, '..', 'renderer');
 
 const MIME = {
@@ -241,12 +241,12 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   const settings = store.getSettings();
   const llm = createLLM(settings);
-  console.log('[cue-web] http://' + HOST + ':' + PORT + '/');
-  console.log('[cue-web] provider=' + settings.provider + ' model=' + llm.model + ' ready=' + llm.ready);
+  console.log('[apperture-web] http://' + HOST + ':' + PORT + '/');
+  console.log('[apperture-web] provider=' + settings.provider + ' model=' + llm.model + ' ready=' + llm.ready);
   if (!llm.ready) {
-    console.log('[cue-web] ' + (llm.configurationError || 'configure a provider key'));
+    console.log('[apperture-web] ' + (llm.configurationError || 'configure a provider key'));
   }
   if (process.env.OPENROUTER_API_KEY) {
-    console.log('[cue-web] OPENROUTER_API_KEY detected');
+    console.log('[apperture-web] OPENROUTER_API_KEY detected');
   }
 });

@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
-  <title>cue</title>
+  <title>apperture</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app">
     <!-- Brand-first toolbar -->
     <div id="toolbar" class="drag-handle">
-      <button class="tb-logo" id="logo-btn" title="cue — open guide" aria-label="cue"></button>
-      <span class="tb-brand" aria-hidden="true">cue</span>
+      <button class="tb-logo" id="logo-btn" title="apperture — open guide" aria-label="apperture"></button>
+      <span class="tb-brand" aria-hidden="true">apperture</span>
       <div class="drag-pill" title="Drag to move window">
         <span class="drag-dots" aria-hidden="true"></span>
       </div>
       <div class="tb-divider"></div>
       <button class="tb-hide" id="hide-btn"><span class="chev"></span><span>Hide</span></button>
       <button class="tb-stop" id="stop-btn" title="Start / stop listening"></button>
-      <button class="tb-quit" id="quit-btn" title="Quit cue"></button>
+      <button class="tb-quit" id="quit-btn" title="Quit apperture"></button>
     </div>
 
     <!-- Main assistant panel -->
@@ -34,7 +34,7 @@
           <div id="panel-main">
             <div id="messages">
               <div class="messages-empty" id="messages-empty">
-                <div class="me-kicker">cue</div>
+                <div class="me-kicker">apperture</div>
                 <div class="me-title">Ready when you are</div>
                 <div class="me-body">Tap the mic to listen live, or ask — answers stream from your real model.</div>
               </div>
@@ -155,14 +155,14 @@
         <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
         <div class="s-field"><span>Azure AI Foundry</span><input id="key-azure" type="password" placeholder="azure key or Entra token" autocomplete="off" /></div>
 
-        <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI: https://&lt;resource&gt;.openai.azure.com/openai · AI Foundry: https://&lt;host&gt;.cognitiveservices.azure.com (cue adds /openai/v1)</span></label>
+        <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI: https://&lt;resource&gt;.openai.azure.com/openai · AI Foundry: https://&lt;host&gt;.cognitiveservices.azure.com (apperture adds /openai/v1)</span></label>
         <div class="s-field"><span>Endpoint</span><input id="azure-endpoint" type="text" placeholder="https://host.cognitiveservices.azure.com" autocomplete="off" /></div>
 
         <label class="s-label">Models <span class="s-hint">fast = Smart off · smart = Smart on</span></label>
         <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" /></div>
         <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" /></div>
 
-        <label class="s-label">Assistant access <span class="s-hint">programs allowed to see what cue is doing</span></label>
+        <label class="s-label">Assistant access <span class="s-hint">programs allowed to see what apperture is doing</span></label>
         <div class="s-callers" id="applink-callers"></div>
 
         <div class="s-status" id="s-status"></div>
@@ -223,11 +223,11 @@
       <div class="s-body s-tab-pane hidden" data-pane="profile">
         <label class="s-label">Your resume <span class="s-hint">paste full resume, or import a PDF/DOCX</span></label>
         <div class="s-field s-upload"><span class="s-filename" id="resume-filename"></span><button class="s-upload-btn" id="upload-resume-btn">Import PDF/DOCX</button></div>
-        <textarea id="resume-text" rows="7" spellcheck="false" placeholder="Paste your full resume here. cue will extract Name, Summary, Experience, Skills, Projects, and Education automatically."></textarea>
+        <textarea id="resume-text" rows="7" spellcheck="false" placeholder="Paste your full resume here. apperture will extract Name, Summary, Experience, Skills, Projects, and Education automatically."></textarea>
 
         <label class="s-label">Target job description <span class="s-hint">optional — every answer gets tailored to this role</span></label>
         <div class="s-field s-upload"><span class="s-filename" id="jd-filename"></span><button class="s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button></div>
-        <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. cue will highlight your most relevant experience."></textarea>
+        <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. apperture will highlight your most relevant experience."></textarea>
       </div>
 
       <!-- Tab: Interview Prep -->
@@ -250,7 +250,7 @@
         <label class="s-label">Salary target <span class="s-hint">used when asked about compensation</span></label>
         <div class="s-field-full"><input id="salary-target" type="text" placeholder="e.g. $150k–$180k base + equity, open to discuss total comp" autocomplete="off" /></div>
 
-        <label class="s-label s-label-spaced">Questions to ask the interviewer <span class="s-hint">cue will suggest these at the end</span></label>
+        <label class="s-label s-label-spaced">Questions to ask the interviewer <span class="s-hint">apperture will suggest these at the end</span></label>
         <textarea id="questions-to-ask" rows="6" spellcheck="false" placeholder="e.g.&#10;- What does success look like in the first 90 days?&#10;- How does the team handle technical debt?&#10;- What's the biggest challenge the team is facing right now?&#10;- How does feedback and mentorship work here?"></textarea>
       </div>
 
@@ -266,7 +266,7 @@
 "></textarea>
         <div class="s-counter"><span id="ai-rules-count">0</span> / 2000</div>
         <div class="s-hint-block">
-          These rules tell cue <strong>how</strong> to write, not <strong>what</strong> to say. Use one imperative sentence per line (e.g. <em>Never use em-dashes.</em>). They apply to every mode except coding-problem solves (LeetCode), which stays strict. Stored locally; never sent anywhere except the AI provider when cue answers a question.
+          These rules tell apperture <strong>how</strong> to write, not <strong>what</strong> to say. Use one imperative sentence per line (e.g. <em>Never use em-dashes.</em>). They apply to every mode except coding-problem solves (LeetCode), which stays strict. Stored locally; never sent anywhere except the AI provider when apperture answers a question.
         </div>
       </div>
 
@@ -292,7 +292,7 @@
   </div>
 
   <!-- Assistant access request. Shown in-window rather than as a native dialog:
-       cue hides its dock icon, so an OS panel never comes forward and cannot be
+       apperture hides its dock icon, so an OS panel never comes forward and cannot be
        clicked. -->
   <div id="consent-scrim" class="hidden">
     <div id="consent" class="glass">

@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const platform = process.platform;
 
-contextBridge.exposeInMainWorld('cue', {
+contextBridge.exposeInMainWorld('apperture', {
   platform,
   settingsGet: () => ipcRenderer.invoke('settings:get'),
   settingsSet: (patch) => ipcRenderer.invoke('settings:set', patch),
@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('cue', {
   platformInfo: () => ipcRenderer.invoke('platform:info'),
   ask: (payload) => ipcRenderer.send('ask', payload),
   captureToggle: () => ipcRenderer.invoke('capture:toggle').catch((err) => {
-    console.error('[cue] captureToggle error', err);
+    console.error('[apperture] captureToggle error', err);
     return false;
   }),
   captureState: () => ipcRenderer.invoke('capture:state'),

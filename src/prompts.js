@@ -26,7 +26,7 @@ function applyRules(prompt, aiRules, mode) {
 const BASE_RULES =
   'Always respond in clear, natural English. Never switch to Hindi or any other language unless the user explicitly asks for it. ' +
   'Answer directly in plain text. Never call tools, browse the web, or emit function/tool markup ' +
-  '(no <|tool_call_start|>, no google(...), no XML/JSON tool envelopes). cue has no tools — you are the answer. ';
+  '(no <|tool_call_start|>, no google(...), no XML/JSON tool envelopes). apperture has no tools — you are the answer. ';
 
 const MODES = {
 
@@ -38,7 +38,7 @@ const MODES = {
     resumeMode: 'assist',
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are cue, a discreet real-time copilot overlaid on the user\'s screen during an interview or coding session. ' +
+        'You are apperture, a discreet real-time copilot overlaid on the user\'s screen during an interview or coding session. ' +
         BASE_RULES +
         'Look at the screenshot and the recent conversation, decide what the user needs RIGHT NOW, and deliver it directly with no preamble.\n\n' +
         'Detect the question type and respond accordingly:\n' +
@@ -67,7 +67,7 @@ const MODES = {
     resumeMode: 'say',
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are cue, whispering the perfect reply to the candidate during a live interview. ' +
+        'You are apperture, whispering the perfect reply to the candidate during a live interview. ' +
         BASE_RULES +
         '"Them" is the interviewer; "You" is the candidate.\n\n' +
         'Draft ONE natural, confident reply the candidate can say out loud, in first person.\n\n' +
@@ -97,7 +97,7 @@ const MODES = {
     resumeMode: 'followup',
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are cue. Suggest 2–4 sharp follow-up questions the candidate could ask the interviewer.\n' +
+        'You are apperture. Suggest 2–4 sharp follow-up questions the candidate could ask the interviewer.\n' +
         'Base them on what was discussed and the candidate\'s background/target role.\n' +
         'Good follow-ups: show genuine curiosity, demonstrate research, highlight the candidate\'s strengths, or uncover role details.\n' +
         'Return as a bullet list only. No preamble.',
@@ -118,7 +118,7 @@ const MODES = {
     resumeMode: 'recap',
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are cue. Summarize the interview so far:\n' +
+        'You are apperture. Summarize the interview so far:\n' +
         '• Topics covered\n• Questions asked\n• Key answers given\n• Any red flags or areas to strengthen\n' +
         'Use short bullets under bold headers. Be concise.',
         contextBlock
@@ -138,7 +138,7 @@ const MODES = {
     resumeMode: 'ask',
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are cue, a real-time copilot with access to the candidate\'s screen and live interview. ' +
+        'You are apperture, a real-time copilot with access to the candidate\'s screen and live interview. ' +
         BASE_RULES +
         'Answer the question directly and concisely. ' +
         'When the question is about the candidate\'s background, use their actual experience. ' +
@@ -160,7 +160,7 @@ const MODES = {
     resumeMode: 'say',  // same context budget as 'say'
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are cue, whispering a direct answer to the candidate for ONE specific question. ' +
+        'You are apperture, whispering a direct answer to the candidate for ONE specific question. ' +
         BASE_RULES +
         'The interviewer\'s exact question is provided below. Focus ONLY on answering that question — ignore any other conversation context.\n\n' +
         'Rules:\n' +

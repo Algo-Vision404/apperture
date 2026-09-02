@@ -18,7 +18,7 @@ function createFixtureModel(content) {
 }
 
 function createTestDirectory(context) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cue-model-manager-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'apperture-model-manager-'));
   context.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   return directory;
 }
