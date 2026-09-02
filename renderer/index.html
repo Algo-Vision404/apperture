@@ -18,8 +18,8 @@
       </div>
       <div class="tb-divider"></div>
       <button class="tb-guide" id="guide-btn" title="Guide — tips by topic" aria-label="Open guide" aria-pressed="false"></button>
-      <button class="tb-hide" id="hide-btn"><span class="chev"></span><span>Hide</span></button>
-      <button class="tb-stop" id="stop-btn" title="Start / stop listening"></button>
+      <button type="button" class="tb-hide" id="hide-btn" title="Hide panel" aria-label="Hide panel" aria-pressed="false"><span class="chev"></span><span id="hide-btn-label">Hide</span></button>
+      <button type="button" class="tb-stop" id="stop-btn" title="Start listening" aria-label="Start listening" aria-pressed="false"></button>
       <button class="tb-quit" id="quit-btn" title="Quit apperture"></button>
     </div>
 
@@ -94,9 +94,9 @@
               </div>
               <div id="composer-bottom">
                 <div class="composer-tools">
-                  <button id="smart-toggle" class="smart-pill"><span class="ic"></span><span>Smart</span></button>
-                  <button id="resume-toggle" class="smart-pill resume-pill" title="Ground answers in your résumé"><span class="ic"></span><span>Resume</span></button>
-                  <button id="history-btn" class="history-btn" title="Live transcript"><span class="ic"></span></button>
+                  <button type="button" id="smart-toggle" class="smart-pill" aria-pressed="false" title="Fast model — click for Smart"><span class="ic"></span><span id="smart-toggle-label">Fast</span></button>
+                  <button type="button" id="resume-toggle" class="smart-pill resume-pill" aria-pressed="false" title="Ground answers in your résumé"><span class="ic"></span><span>Resume</span></button>
+                  <button type="button" id="history-btn" class="history-btn" title="Live transcript" aria-pressed="false"><span class="ic"></span></button>
                   <button id="more-btn" class="more-btn" title="Settings" aria-label="Settings"></button>
                 </div>
                 <button id="send-btn" title="Send message (Enter)"></button>
@@ -131,7 +131,10 @@
     <div id="settings" class="glass">
       <div class="s-head">
         <div class="s-title">Settings</div>
-        <button id="s-close" class="s-close">Done</button>
+        <div class="s-head-actions">
+          <button type="button" id="s-cancel" class="s-cancel">Cancel</button>
+          <button type="button" id="s-close" class="s-close">Done</button>
+        </div>
       </div>
 
       <!-- Tab bar -->
@@ -283,10 +286,10 @@
           <textarea id="resume-text" rows="8" spellcheck="false" placeholder="Paste your full résumé here. apperture extracts Name, Summary, Experience, Skills, Projects, and Education for grounded answers."></textarea>
           <div class="resume-meta-row">
             <span id="resume-meta">No résumé loaded</span>
-            <label class="resume-use-toggle">
-              <input type="checkbox" id="use-resume-settings" checked />
+            <div class="s-switch-row s-switch-row-compact">
               <span>Use résumé for answers</span>
-            </label>
+              <button type="button" class="s-switch s-switch-live" id="use-resume-settings" role="switch" aria-checked="true" aria-label="Use résumé for answers"></button>
+            </div>
           </div>
         </div>
 
@@ -331,14 +334,20 @@
         </div>
 
         <label class="s-label s-label-spaced">Stealth</label>
-        <label class="s-check-row">
-          <input type="checkbox" id="stealth-mode" checked />
-          <span><strong>Stealth mode</strong> — hide apperture branding on screen (shoulder-surfing + cleaner shares)</span>
-        </label>
-        <label class="s-check-row">
-          <input type="checkbox" id="stealth-auto-collapse" checked />
-          <span><strong>Auto-collapse while listening</strong> — shrink to the toolbar during live capture</span>
-        </label>
+        <div class="s-switch-row">
+          <div class="s-switch-copy">
+            <strong>Stealth mode</strong>
+            <span>Hide branding on screen. Capture exclusion stays on in the desktop app.</span>
+          </div>
+          <button type="button" class="s-switch" id="stealth-mode" role="switch" aria-checked="true" aria-label="Stealth mode"></button>
+        </div>
+        <div class="s-switch-row">
+          <div class="s-switch-copy">
+            <strong>Collapse while listening</strong>
+            <span>Shrink to the toolbar during live capture. Click Show anytime to expand.</span>
+          </div>
+          <button type="button" class="s-switch" id="stealth-auto-collapse" role="switch" aria-checked="true" aria-label="Collapse while listening"></button>
+        </div>
 
         <label class="s-label s-label-spaced">AI rules <span class="s-hint">how the AI should write its responses</span></label>
         <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.

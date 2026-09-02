@@ -6,15 +6,46 @@
   const isWindows = apperture.platform === 'win32';
   const isMac = apperture.platform === 'darwin';
 
+  function isSwitchOn(el) {
+    return !!(el && el.getAttribute('aria-checked') === 'true');
+  }
+  function setSwitchOn(el, on, disabled) {
+    if (!el) return;
+    el.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (disabled != null) {
+      el.disabled = !!disabled;
+      el.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    }
+  }
+  function markPressed(el, on) {
+    if (!el) return;
+    el.classList.toggle('on', !!on);
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  function syncSegGroup(selector, dataKey, value) {
+    document.querySelectorAll(selector).forEach((button) => {
+      const on = button.dataset[dataKey] === value;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
   // ---- paint icons -------------------------------------------------------
-  function setListenIcon(active) {
-    $('#stop-btn').innerHTML = icon(active ? 'listen-active' : 'mic', { size: 15 });
+  function syncListenButton(active) {
+    const btn = $('#stop-btn');
+    if (!btn) return;
+    btn.classList.toggle('active', !!active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    const label = active ? 'Stop listening' : 'Start listening';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.innerHTML = icon(active ? 'listen-active' : 'mic', { size: 15 });
   }
   $('#logo-btn').innerHTML = icon('logo', { size: 18 });
   $('.tb-hide .chev').innerHTML = icon('chevron-down', { size: 14, stroke: 2 });
   const guideBtn = document.getElementById('guide-btn');
   if (guideBtn) guideBtn.innerHTML = icon('book', { size: 15 });
-  setListenIcon(false);
+  syncListenButton(false);
   $('#quit-btn').innerHTML = icon('x', { size: 15, stroke: 2 });
   document.querySelector('.act[data-mode="assist"] .ic').innerHTML = icon('sparkles', { size: 15 });
   document.querySelector('.act[data-mode="say"] .ic').innerHTML = icon('wand-sparkles', { size: 15 });
@@ -664,16 +695,28 @@
 
   // Smart toggle — switches Fast ↔ Smart model tier
   const smartBtn = $('#smart-toggle');
-  smartBtn.addEventListener('click', async () => {
-    settings.smart = !settings.smart;
-    smartBtn.classList.toggle('on', settings.smart);
-    await apperture.settingsSet({ smart: settings.smart });
+  const smartBtnLabel = document.getElementById('smart-toggle-label');
+  function syncSmartToggleUi() {
+    if (!smartBtn || !settings) return;
+    markPressed(smartBtn, !!settings.smart);
+    if (smartBtnLabel) smartBtnLabel.textContent = settings.smart ? 'Smart' : 'Fast';
     updateSmartTooltip();
+  }
+  let smartToggleBusy = false;
+  smartBtn.addEventListener('click', async () => {
+    if (!settings || smartToggleBusy) return;
+    smartToggleBusy = true;
+    settings.smart = !settings.smart;
+    syncSmartToggleUi();
+    try {
+      await apperture.settingsSet({ smart: settings.smart });
+    } finally {
+      smartToggleBusy = false;
+    }
     const m = (settings.models && settings.models[settings.provider]) || {};
     const llmPreview = settings.smart
       ? (m.smart && m.smart !== m.fast ? m.smart : 'smarter model')
       : (m.fast || 'fast model');
-    // Reflect OpenRouter auto-upgrade when Fast/Smart were stuck on the same id
     let label = llmPreview;
     if (settings.provider === 'openrouter' && settings.smart && (!m.smart || m.smart === m.fast || m.smart === 'google/gemma-4-31b-it:free' || m.smart === 'nvidia/nemotron-3-super-120b-a12b:free')) {
       label = 'minimax/minimax-m2.7:free';
@@ -685,24 +728,25 @@
 
   // Resume grounding toggle — when on, answers pull facts from the saved résumé
   const resumeBtn = document.getElementById('resume-toggle');
-  function hasResumeText(src) {
-    const s = src || settings;
-    return !!(s && s.resumeText && String(s.resumeText).trim());
+  function hasResumeText() {
+    const live = $('#resume-text');
+    if (live && String(live.value || '').trim()) return true;
+    return !!(settings && settings.resumeText && String(settings.resumeText).trim());
   }
   function updateResumeToggleUi() {
     if (!settings) return;
-    const on = settings.useResume !== false && hasResumeText();
+    const loaded = hasResumeText();
+    const on = settings.useResume !== false && loaded;
     if (resumeBtn) {
-      resumeBtn.classList.toggle('on', on);
-      resumeBtn.classList.toggle('needs-resume', !hasResumeText());
-      resumeBtn.title = !hasResumeText()
+      markPressed(resumeBtn, on);
+      resumeBtn.classList.toggle('needs-resume', !loaded);
+      resumeBtn.title = !loaded
         ? 'Add a résumé in Settings → Profile, then turn this on'
         : (on
           ? 'Résumé grounding ON — answers use your résumé. Click to turn off.'
           : 'Résumé grounding OFF — click to answer from your résumé.');
     }
-    const chk = document.getElementById('use-resume-settings');
-    if (chk) chk.checked = settings.useResume !== false;
+    setSwitchOn(document.getElementById('use-resume-settings'), on, !loaded);
     updateResumeMeta();
   }
   function updateResumeMeta() {
@@ -721,9 +765,8 @@
   async function setUseResume(next) {
     if (!settings) return;
     if (next && !hasResumeText()) {
-      openSettings();
-      const profileTab = document.querySelector('.s-tab[data-tab="profile"]');
-      if (profileTab) profileTab.click();
+      setSwitchOn(document.getElementById('use-resume-settings'), false, true);
+      openSettingsTab('profile');
       showStatus('Import or paste your résumé first, then turn Resume on.');
       return;
     }
@@ -811,19 +854,34 @@
     }
   }
 
+  function syncHideChrome(collapsed) {
+    const btn = $('#hide-btn');
+    const label = document.getElementById('hide-btn-label');
+    if (btn) {
+      btn.classList.toggle('collapsed', !!collapsed);
+      btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+      const text = collapsed ? 'Show panel' : 'Hide panel';
+      btn.title = text;
+      btn.setAttribute('aria-label', text);
+    }
+    if (label) label.textContent = collapsed ? 'Show' : 'Hide';
+  }
+
   function setPanelCollapsed(collapsed, fromStealth) {
     const panel = $('#panel');
     if (!panel) return;
     const isCollapsed = panel.classList.contains('collapsed');
-    if (collapsed === isCollapsed) return;
-    panel.classList.toggle('collapsed', collapsed);
-    $('#hide-btn').classList.toggle('collapsed', collapsed);
-    $('#panel-wrap').classList.toggle('panel-collapsed', collapsed);
-    $('#app').classList.toggle('panel-collapsed', collapsed);
-    $('#live-dot').style.display = collapsed ? 'none' : '';
-    const stt = $('#stt-status');
-    if (stt) stt.style.display = collapsed ? 'none' : '';
-    if (!collapsed && fromStealth) stealthAutoCollapsed = false;
+    if (collapsed !== isCollapsed) {
+      panel.classList.toggle('collapsed', collapsed);
+      $('#panel-wrap').classList.toggle('panel-collapsed', collapsed);
+      $('#app').classList.toggle('panel-collapsed', collapsed);
+      $('#live-dot').style.display = collapsed ? 'none' : '';
+      const stt = $('#stt-status');
+      if (stt) stt.style.display = collapsed ? 'none' : '';
+    }
+    syncHideChrome(collapsed);
+    if (!collapsed) stealthAutoCollapsed = false;
+    if (fromStealth && !collapsed) stealthAutoCollapsed = false;
   }
 
   function maybeStealthCollapse(active) {
@@ -842,22 +900,41 @@
   }
 
   function toggleHide() {
-    const collapsed = $('#panel').classList.toggle('collapsed');
-    $('#hide-btn').classList.toggle('collapsed', collapsed);
-    $('#panel-wrap').classList.toggle('panel-collapsed', collapsed);
-    $('#app').classList.toggle('panel-collapsed', collapsed);
-    $('#live-dot').style.display = collapsed ? 'none' : '';
-    const stt = $('#stt-status');
-    if (stt) stt.style.display = collapsed ? 'none' : '';
-    if (!collapsed) stealthAutoCollapsed = false;
+    const panel = $('#panel');
+    if (!panel) return;
+    setPanelCollapsed(!panel.classList.contains('collapsed'), false);
   }
   $('#hide-btn').addEventListener('click', toggleHide);
   apperture.on('hide:toggle', toggleHide);
 
-  // Stop = start/stop listening. Kick off system-audio capture straight from the click so
+  async function applyStealthMode(on) {
+    if (!settings) return;
+    settings.stealthMode = !!on;
+    setSwitchOn(document.getElementById('stealth-mode'), settings.stealthMode);
+    syncStealthUi();
+    if (!on && stealthAutoCollapsed) setPanelCollapsed(false, true);
+    await apperture.settingsSet({ stealthMode: settings.stealthMode });
+    showStatus(settings.stealthMode ? 'Stealth on — branding hidden.' : 'Stealth off — branding visible.');
+  }
+  async function applyStealthAutoCollapse(on) {
+    if (!settings) return;
+    settings.stealthAutoCollapse = !!on;
+    setSwitchOn(document.getElementById('stealth-auto-collapse'), settings.stealthAutoCollapse);
+    if (!on && stealthAutoCollapsed) setPanelCollapsed(false, true);
+    await apperture.settingsSet({ stealthAutoCollapse: settings.stealthAutoCollapse });
+    showStatus(settings.stealthAutoCollapse
+      ? 'Panel will collapse while listening.'
+      : 'Panel stays open while listening.');
+  }
+
+  // Listen toggle. Kick off system-audio capture straight from the click so
   // the user-gesture is fresh for getDisplayMedia (loopback capture needs it).
+  let listenToggleBusy = false;
   $('#stop-btn').addEventListener('click', async () => {
+    if (listenToggleBusy) return;
+    listenToggleBusy = true;
     const turningOn = !$('#stop-btn').classList.contains('active');
+    try {
     let speechAlreadyStarted = false;
     if (turningOn && apperture.isWeb) {
       // Unlock mic permission on the click gesture, measure that audio exists, then
@@ -905,6 +982,9 @@
       const primed = typeof apperture.takePrimedMic === 'function' ? apperture.takePrimedMic() : null;
       if (primed) primed.getTracks().forEach((t) => t.stop());
       stopSystemAudio();
+    }
+    } finally {
+      listenToggleBusy = false;
     }
   });
 
@@ -1157,7 +1237,10 @@
     const historyBtn = document.getElementById('history-btn');
     const app = document.getElementById('app');
     if (sidebar) sidebar.classList.remove('hidden');
-    if (historyBtn) historyBtn.classList.add('active');
+    if (historyBtn) {
+      historyBtn.classList.add('active');
+      historyBtn.setAttribute('aria-pressed', 'true');
+    }
     const panelWrap = document.getElementById('panel-wrap');
     if (panelWrap) panelWrap.classList.add('sidebar-open');
     if (app) app.classList.add('sidebar-open');
@@ -1169,7 +1252,10 @@
     const historyBtn = document.getElementById('history-btn');
     const app = document.getElementById('app');
     if (sidebar) sidebar.classList.add('hidden');
-    if (historyBtn) historyBtn.classList.remove('active');
+    if (historyBtn) {
+      historyBtn.classList.remove('active');
+      historyBtn.setAttribute('aria-pressed', 'false');
+    }
     const panelWrap = document.getElementById('panel-wrap');
     if (panelWrap) panelWrap.classList.remove('sidebar-open');
     if (app) app.classList.remove('sidebar-open');
@@ -1311,8 +1397,7 @@
 
   apperture.on('capture:state', ({ active, streaming, mode }) => {
     setLiveDotState(active ? 'idle' : 'off');
-    $('#stop-btn').classList.toggle('active', active);
-    setListenIcon(active);
+    syncListenButton(active);
     composer.classList.toggle('listening', active);
     const historyBtn = document.getElementById('history-btn');
     if (historyBtn) {
@@ -1412,8 +1497,8 @@
         label.className = 'stt-status stt-' + sttState;
         label.hidden = status === 'off';
       }
-      if (status === 'loading') { $('#stop-btn').classList.add('active'); setListenIcon(true); }
-      if (status === 'off' || status === 'error') { $('#stop-btn').classList.remove('active'); setListenIcon(false); }
+      if (status === 'loading') syncListenButton(true);
+      if (status === 'off' || status === 'error') syncListenButton(false);
       if (status === 'loading' || status === 'transcribing' || status === 'stopping') setLiveDotState('transcribing');
       if (status === 'ready') setLiveDotState('idle');
       if (status === 'off') setLiveDotState('off');
@@ -1634,7 +1719,10 @@
     const fast = m.fast || 'fast model';
     const smart = m.smart || 'smart model';
     const btn = document.getElementById('smart-toggle');
-    if (btn) btn.title = 'Fast: ' + fast + ' · Smart: ' + smart + ' (higher quality, ~2× slower)';
+    if (btn) {
+      const mode = settings.smart ? 'Smart' : 'Fast';
+      btn.title = mode + ' · Fast: ' + fast + ' · Smart: ' + smart + ' — click to switch';
+    }
   }
 
   // ---- microphone permission banner --------------------------------------
@@ -1722,17 +1810,35 @@
   // ---- settings ----------------------------------------------------------
   const scrim = $('#settings-scrim');
   function openSettings() {
+    if (!scrim.classList.contains('hidden')) return;
     fillSettings();
     initKeysAdvancedToggle();
     scrim.classList.remove('hidden');
     refreshWhisperModels();
   }
-  async function closeSettings() {
+  async function commitSettings() {
     if (await saveSettings()) scrim.classList.add('hidden');
   }
+  async function dismissSettings() {
+    try {
+      settings = await apperture.settingsGet();
+    } catch (_) { /* keep in-memory settings */ }
+    fillSettings();
+    updatePrepStatus();
+    syncSmartToggleUi();
+    syncStealthUi();
+    updateResumeToggleUi();
+    scrim.classList.add('hidden');
+  }
   $('#more-btn').addEventListener('click', openSettings);
-  $('#s-close').addEventListener('click', () => { void closeSettings(); });
-  scrim.addEventListener('click', (e) => { if (e.target === scrim) void closeSettings(); });
+  $('#s-close').addEventListener('click', () => { void commitSettings(); });
+  const sCancel = document.getElementById('s-cancel');
+  if (sCancel) sCancel.addEventListener('click', () => { void dismissSettings(); });
+  scrim.addEventListener('click', (e) => { if (e.target === scrim) void dismissSettings(); });
+
+  document.querySelectorAll('#settings button').forEach((btn) => {
+    if (!btn.getAttribute('type')) btn.type = 'button';
+  });
 
   // Tab switching
   document.querySelectorAll('.s-tab').forEach((tab) => {
@@ -1752,7 +1858,7 @@
 
   function fillSettings() {
     // Keys tab
-    document.querySelectorAll('#provider-seg button').forEach((b) => b.classList.toggle('on', b.dataset.provider === settings.provider));
+    syncSegGroup('#provider-seg button', 'provider', settings.provider);
     $('#key-openai').value = settings.apiKeys.openai || '';
     $('#key-anthropic').value = settings.apiKeys.anthropic || '';
     $('#key-gemini').value = settings.apiKeys.gemini || '';
@@ -1764,7 +1870,7 @@
     $('#key-ollama').value = settings.apiKeys.ollama || '';
     $('#key-groq').value = settings.apiKeys.groq || '';
     $('#key-minimax').value = settings.apiKeys.minimax || '';
-    document.querySelectorAll('#minimax-region-seg button').forEach((b) => b.classList.toggle('on', b.dataset.region === (settings.minimaxRegion || 'global_en')));
+    syncSegGroup('#minimax-region-seg button', 'region', settings.minimaxRegion || 'global_en');
     $('#key-azure').value = settings.apiKeys.azure || '';
     $('#azure-endpoint').value = settings.azureEndpoint || '';
     const m = settings.models[settings.provider] || { fast: '', smart: '' };
@@ -1772,9 +1878,7 @@
     fillAppLinkCallers();
     $('#s-status').textContent = statusText();
     // Transcription tab
-    document.querySelectorAll('#stt-provider-seg button').forEach((button) => {
-      button.classList.toggle('on', button.dataset.sttProvider === (settings.sttProvider || 'auto'));
-    });
+    syncSegGroup('#stt-provider-seg button', 'sttProvider', settings.sttProvider || 'auto');
     syncSttKeyFieldsFromKeys();
     updateSttKeyVisibility(settings.sttProvider || 'auto');
     const orStt = document.getElementById('openrouter-stt-model');
@@ -1789,9 +1893,7 @@
     // Profile tab
     $('#resume-text').value = settings.resumeText || '';
     $('#job-description').value = settings.jobDescription || '';
-    const useResumeChk = document.getElementById('use-resume-settings');
-    if (useResumeChk) useResumeChk.checked = settings.useResume !== false;
-    updateResumeMeta();
+    updateResumeToggleUi();
     const resumeName = document.getElementById('resume-filename');
     if (resumeName && !(resumeName.textContent || '').trim()) {
       resumeName.textContent = settings.resumeText ? 'Pasted résumé' : 'No file imported yet';
@@ -1802,10 +1904,8 @@
     $('#why-leaving').value = settings.whyLeaving || '';
     $('#work-style').value = settings.workStyle || '';
     // Style tab
-    const stealthModeChk = document.getElementById('stealth-mode');
-    const stealthCollapseChk = document.getElementById('stealth-auto-collapse');
-    if (stealthModeChk) stealthModeChk.checked = settings.stealthMode !== false;
-    if (stealthCollapseChk) stealthCollapseChk.checked = settings.stealthAutoCollapse !== false;
+    setSwitchOn(document.getElementById('stealth-mode'), settings.stealthMode !== false);
+    setSwitchOn(document.getElementById('stealth-auto-collapse'), settings.stealthAutoCollapse !== false);
     $('#ai-rules').value = settings.aiRules || '';
     updateAiRulesCounter();
     // Q&A tab
@@ -1857,22 +1957,59 @@
     $('#resume-text').value = res.text || '';
     const resumeName = document.getElementById('resume-filename');
     if (resumeName) resumeName.textContent = res.fileName || 'Imported résumé';
+    settings.resumeText = res.text || '';
     updateResumeMeta();
-    showStatus('Imported ' + (res.fileName || 'résumé') + ' — click Done to keep it.');
+    updateResumeToggleUi();
+    await apperture.settingsSet({ resumeText: settings.resumeText, useResume: true });
+    settings.useResume = true;
+    updateResumeToggleUi();
+    updatePrepStatus();
+    showStatus('Imported ' + (res.fileName || 'résumé') + ' — Resume is on.');
   });
   const clearResumeBtn = document.getElementById('clear-resume-btn');
   if (clearResumeBtn) clearResumeBtn.addEventListener('click', () => {
     $('#resume-text').value = '';
     const resumeName = document.getElementById('resume-filename');
     if (resumeName) resumeName.textContent = 'No file imported yet';
+    settings.resumeText = '';
     updateResumeMeta();
+    void setUseResume(false);
+    void apperture.settingsSet({ resumeText: '' });
   });
   const resumeTextEl = document.getElementById('resume-text');
-  if (resumeTextEl) resumeTextEl.addEventListener('input', updateResumeMeta);
+  if (resumeTextEl) {
+    resumeTextEl.addEventListener('input', updateResumeMeta);
+    resumeTextEl.addEventListener('blur', async () => {
+      const text = resumeTextEl.value.trim();
+      if (text === String(settings.resumeText || '').trim()) {
+        updateResumeToggleUi();
+        return;
+      }
+      settings.resumeText = text;
+      await apperture.settingsSet({ resumeText: text });
+      if (!text && settings.useResume) await setUseResume(false);
+      else updateResumeToggleUi();
+    });
+  }
   const useResumeSettings = document.getElementById('use-resume-settings');
-  if (useResumeSettings) {
-    useResumeSettings.addEventListener('change', () => {
-      void setUseResume(!!useResumeSettings.checked);
+  if (useResumeSettings && !useResumeSettings.dataset.wired) {
+    useResumeSettings.dataset.wired = '1';
+    useResumeSettings.addEventListener('click', () => {
+      void setUseResume(!isSwitchOn(useResumeSettings));
+    });
+  }
+  const stealthModeBtn = document.getElementById('stealth-mode');
+  if (stealthModeBtn && !stealthModeBtn.dataset.wired) {
+    stealthModeBtn.dataset.wired = '1';
+    stealthModeBtn.addEventListener('click', () => {
+      void applyStealthMode(!isSwitchOn(stealthModeBtn));
+    });
+  }
+  const stealthCollapseBtn = document.getElementById('stealth-auto-collapse');
+  if (stealthCollapseBtn && !stealthCollapseBtn.dataset.wired) {
+    stealthCollapseBtn.dataset.wired = '1';
+    stealthCollapseBtn.addEventListener('click', () => {
+      void applyStealthAutoCollapse(!isSwitchOn(stealthCollapseBtn));
     });
   }
   const uploadJdBtn = document.getElementById('upload-jd-btn');
@@ -1906,23 +2043,21 @@
 
   document.querySelectorAll('#provider-seg button').forEach((b) => b.addEventListener('click', () => {
     settings.provider = b.dataset.provider;
-    document.querySelectorAll('#provider-seg button').forEach((x) => x.classList.toggle('on', x === b));
+    syncSegGroup('#provider-seg button', 'provider', settings.provider);
     updateCustomProviderFields();
     const m = settings.models[settings.provider] || { fast: '', smart: '' };
     $('#model-fast').value = m.fast; $('#model-smart').value = m.smart;
     $('#s-status').textContent = statusText();
-    updateSmartTooltip();
+    syncSmartToggleUi();
   }));
   document.querySelectorAll('#minimax-region-seg button').forEach((b) => b.addEventListener('click', () => {
     settings.minimaxRegion = b.dataset.region;
-    document.querySelectorAll('#minimax-region-seg button').forEach((x) => x.classList.toggle('on', x === b));
+    syncSegGroup('#minimax-region-seg button', 'region', settings.minimaxRegion);
   }));
 
   document.querySelectorAll('#stt-provider-seg button').forEach((button) => button.addEventListener('click', () => {
     settings.sttProvider = button.dataset.sttProvider;
-    document.querySelectorAll('#stt-provider-seg button').forEach((candidate) => {
-      candidate.classList.toggle('on', candidate === button);
-    });
+    syncSegGroup('#stt-provider-seg button', 'sttProvider', settings.sttProvider || 'auto');
     updateSttKeyVisibility(settings.sttProvider || 'auto');
     $('#s-status').textContent = statusText();
   }));
@@ -2200,18 +2335,18 @@
     settings.resumeText = $('#resume-text').value.trim();
     settings.jobDescription = $('#job-description').value.trim();
     const useResumeChkSave = document.getElementById('use-resume-settings');
-    if (useResumeChkSave) settings.useResume = !!useResumeChkSave.checked;
+    if (useResumeChkSave) settings.useResume = isSwitchOn(useResumeChkSave) && !!settings.resumeText;
     else if (typeof settings.useResume !== 'boolean') settings.useResume = true;
     // Interview Prep
     settings.starStories = $('#star-stories').value.trim();
     settings.whyCompany = $('#why-company').value.trim();
     settings.whyLeaving = $('#why-leaving').value.trim();
     settings.workStyle = $('#work-style').value.trim();
-    // Style tab
+    // Style tab — switches already persist on click; keep Done in sync
     const stealthModeChkSave = document.getElementById('stealth-mode');
     const stealthCollapseChkSave = document.getElementById('stealth-auto-collapse');
-    if (stealthModeChkSave) settings.stealthMode = !!stealthModeChkSave.checked;
-    if (stealthCollapseChkSave) settings.stealthAutoCollapse = !!stealthCollapseChkSave.checked;
+    if (stealthModeChkSave) settings.stealthMode = isSwitchOn(stealthModeChkSave);
+    if (stealthCollapseChkSave) settings.stealthAutoCollapse = isSwitchOn(stealthCollapseChkSave);
     settings.aiRules = $('#ai-rules').value.trim();
     // Q&A
     settings.salaryTarget = $('#salary-target').value.trim();
@@ -2220,8 +2355,9 @@
       settings = await apperture.settingsSet(settings);
       $('#s-status').textContent = statusText();
       updatePrepStatus();
-      updateSmartTooltip();
+      syncSmartToggleUi();
       syncStealthUi();
+      updateResumeToggleUi();
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
@@ -2235,7 +2371,10 @@
 
   // ---- global keys -------------------------------------------------------
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !scrim.classList.contains('hidden')) { void closeSettings(); }
+    if (e.key === 'Escape' && !scrim.classList.contains('hidden')) {
+      e.preventDefault();
+      void dismissSettings();
+    }
   });
 
   // ---- click-through: only the UI blocks the mouse; empty gaps pass to your screen ----
@@ -2485,7 +2624,7 @@
   if (guideBtn) guideBtn.addEventListener('click', toggleGuide);
   obScrim.addEventListener('click', (e) => { if (e.target === obScrim) void closeGuide(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !obScrim.classList.contains('hidden')) {
+    if (e.key === 'Escape' && !obScrim.classList.contains('hidden') && scrim.classList.contains('hidden')) {
       e.preventDefault();
       void closeGuide();
     }
@@ -2530,7 +2669,7 @@
       ob.body = 'apperture needs microphone permission to hear you. Click the button below to open Windows microphone settings and allow apperture.<br><br><strong>Screen capture works automatically on Windows 10</strong> — no additional permission needed.<ul><li><strong>Microphone</strong> — to hear you</li><li><strong>Screen recording</strong> — works automatically on Windows 10</li></ul>';
     }
 
-    smartBtn.classList.toggle('on', !!settings.smart);
+    syncSmartToggleUi();
     if (typeof settings.useResume !== 'boolean') settings.useResume = true;
     updateResumeToggleUi();
     wireEmptyActions(document.getElementById('messages-empty'));
@@ -2547,8 +2686,8 @@
 
     const st = await apperture.captureState();
     $('#live-dot').classList.toggle('off', !st.active);
-    $('#stop-btn').classList.toggle('active', st.active);
-    setListenIcon(!!st.active);
+    syncListenButton(!!st.active);
+    syncHideChrome($('#panel') && $('#panel').classList.contains('collapsed'));
     composer.classList.toggle('listening', !!st.active);
     updateSttStatus({ active: !!st.active, streaming: !!st.active });
     if (st.active && shouldStartRendererMic(st.mode)) startMic();

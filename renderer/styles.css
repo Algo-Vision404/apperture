@@ -407,6 +407,84 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
 }
 .s-check-row input { margin-top: 3px; accent-color: var(--accent); }
 
+.s-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 236, 190, 0.12);
+  background: rgba(255, 236, 190, 0.035);
+}
+.s-switch-row-compact {
+  margin: 0;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  gap: 10px;
+}
+.s-switch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.s-switch-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tx-1);
+}
+.s-switch-copy span,
+.s-switch-row-compact > span {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--tx-mut);
+}
+.s-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 236, 190, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 236, 190, 0.08);
+  cursor: pointer;
+  transition: background 160ms var(--ease), border-color 160ms var(--ease);
+}
+.s-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(250, 247, 240, 0.88);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 160ms var(--ease);
+}
+.s-switch:hover { border-color: rgba(255, 236, 190, 0.28); }
+.s-switch[aria-checked="true"] {
+  background: rgba(var(--accent-rgb), 0.85);
+  border-color: rgba(var(--accent-rgb), 0.9);
+}
+.s-switch[aria-checked="true"]::after { transform: translateX(18px); }
+.s-switch.s-switch-live[aria-checked="true"] {
+  background: rgba(var(--live-rgb), 0.85);
+  border-color: rgba(var(--live-rgb), 0.9);
+}
+.s-switch:disabled,
+.s-switch[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  .s-switch, .s-switch::after { transition: none; }
+}
+
 .tb-hide {
   gap: 5px; padding: 6px 11px; border-radius: 10px;
   font-size: 12.5px; font-weight: 560; letter-spacing: 0.01em;
@@ -1150,8 +1228,21 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   flex-direction: column;
   animation: overlayIn 280ms var(--ease-out) both;
 }
-.s-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0; }
+.s-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0; gap: 12px; }
 .s-title { font-size: 17px; font-weight: 600; color: var(--tx-1); }
+.s-head-actions { display: flex; align-items: center; gap: 8px; }
+.s-cancel {
+  border: 1px solid rgba(255, 236, 190, 0.16);
+  background: transparent;
+  color: var(--tx-2);
+  font-weight: 560;
+  font-size: 13px;
+  font-family: var(--font);
+  padding: 7px 12px;
+  border-radius: var(--r-control);
+  cursor: pointer;
+}
+.s-cancel:hover { color: var(--tx-1); background: rgba(255, 236, 190, 0.06); }
 .s-close {
   border: none;
   background: var(--accent);
@@ -1218,6 +1309,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .s-seg-wrap button { min-width: 76px; flex: 1 1 auto; }
 .s-seg button { flex: 1; padding: 8px; border-radius: var(--r-8); border: 1px solid rgba(255,236,190,0.12); background: rgba(255,236,190,0.035); color: var(--tx-2); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 140ms ease; }
 .s-seg button.on { border-color: var(--accent); color: #fff; background: rgba(var(--accent-rgb), 0.16); }
+.s-seg button[aria-pressed="true"] { border-color: var(--accent); color: #fff; background: rgba(var(--accent-rgb), 0.16); }
 .s-field { display: flex; align-items: center; gap: 10px; }
 .s-field span { width: 78px; color: var(--tx-mut); font-size: 12px; flex-shrink: 0; }
 .s-field input { flex: 1; padding: 8px 10px; border-radius: var(--r-8); border: 1px solid rgba(255,236,190,0.12); background: rgba(0,0,0,0.25); color: var(--tx-1); font-size: 13px; font-family: var(--font); outline: none; }
@@ -1774,11 +1866,3 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   flex-wrap: wrap;
 }
 #resume-meta { font-size: 11px; color: var(--tx-mut); }
-.resume-use-toggle {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 12px; color: var(--tx-2); cursor: pointer; user-select: none;
-}
-.resume-use-toggle input {
-  accent-color: var(--live);
-  width: 14px; height: 14px;
-}
