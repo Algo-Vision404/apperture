@@ -890,7 +890,7 @@
   }
 
   function maybeStealthCollapse(active) {
-    if (!settings || settings.stealthMode === false || settings.stealthAutoCollapse === false) return;
+    if (!settings || settings.stealthMode === false || settings.stealthAutoCollapse !== true) return;
     if (active) {
       const panel = $('#panel');
       panelWasExpandedBeforeStealth = panel && !panel.classList.contains('collapsed');
@@ -2007,7 +2007,7 @@
     $('#work-style').value = settings.workStyle || '';
     // Style tab
     setSwitchOn(document.getElementById('stealth-mode'), settings.stealthMode !== false);
-    setSwitchOn(document.getElementById('stealth-auto-collapse'), settings.stealthAutoCollapse !== false);
+    setSwitchOn(document.getElementById('stealth-auto-collapse'), settings.stealthAutoCollapse === true);
     $('#ai-rules').value = settings.aiRules || '';
     updateAiRulesCounter();
     // Q&A tab

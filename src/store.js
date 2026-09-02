@@ -22,7 +22,7 @@ const DEFAULTS = {
   },
   smart: false,
   stealthMode: true,
-  stealthAutoCollapse: true,
+  stealthAutoCollapse: false,
   baseUrl: '',
   minimaxRegion: 'global_en',
   apiKeys: { openai: '', anthropic: '', gemini: '', deepgram: '', custom: '', ollama: '', groq: '', minimax: '', azure: '', openrouter: '' },
@@ -100,6 +100,11 @@ function load() {
   }
 
   data = migrateGroqModels(data);
+
+  if (!data._stealthCollapseOffByDefault) {
+    data.stealthAutoCollapse = false;
+    data._stealthCollapseOffByDefault = true;
+  }
 
   return data;
 }

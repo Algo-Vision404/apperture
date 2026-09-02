@@ -22,7 +22,7 @@ const DEFAULTS = {
   },
   smart: false,
   stealthMode: true,
-  stealthAutoCollapse: true,
+  stealthAutoCollapse: false,
   baseUrl: '',
   minimaxRegion: 'global_en',
   apiKeys: {
@@ -98,6 +98,12 @@ function load() {
   }
   data = migrateOpenRouterModels(data);
   data = migrateGroqModels(data);
+
+  if (!data._stealthCollapseOffByDefault) {
+    data.stealthAutoCollapse = false;
+    data._stealthCollapseOffByDefault = true;
+  }
+
   return data;
 }
 

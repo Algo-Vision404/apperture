@@ -47,3 +47,8 @@ test('stealth switches persist immediately instead of waiting for Done', () => {
   assert.match(js, /settingsSet\(\{ stealthMode:/);
   assert.match(js, /settingsSet\(\{ stealthAutoCollapse:/);
 });
+
+test('listen does not auto-collapse panel unless stealth auto-collapse is explicitly on', () => {
+  assert.match(js, /settings\.stealthAutoCollapse !== true/);
+  assert.match(js, /settings\.stealthAutoCollapse === true/);
+});
