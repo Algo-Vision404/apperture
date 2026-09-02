@@ -30,8 +30,8 @@
   let micBytes = 0;
   let micBusy = false;
   let micWarnedNoKey = false;
-  const SYS_FLUSH_MS = 2800;
-  const SYS_MIN_BYTES = 16000 * 2 * 1.4; // ~1.4s @ 16 kHz mono int16
+  const SYS_FLUSH_MS = 2200;
+  const SYS_MIN_BYTES = 16000 * 2 * 1.0; // ~1.0s @ 16 kHz mono int16
   const SYS_MAX_BYTES = 16000 * 2 * 10;
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   const hasSpeechApi = typeof SpeechRecognitionAPI === 'function';
@@ -128,7 +128,10 @@
       }
       if (result && result.error) {
         emit('status', {
-          message: (channel === 'them' ? 'Meeting audio STT: ' : 'Mic STT: ') + result.error
+          message: (channel === 'them' ? 'Meeting audio STT: ' : 'Mic STT: ') + result.error +
+            (/credit|402|balance/i.test(String(result.error))
+              ? ' Add a Groq or OpenAI key in Settings → Audio for Whisper (OpenRouter chat keys need audio credits).'
+              : '')
         });
         emit('stt:status', { channel: channel, status: 'error' });
         return;
@@ -212,10 +215,32 @@
     if (speechWatchdog) clearTimeout(speechWatchdog);
     speechWatchdog = setTimeout(function () {
       if (!capturing || micMode !== 'browser-speech' || heardSpeech) return;
+      // Browser speech often starts but never attaches real mic audio — fall over to PCM/cloud.
       emit('status', {
-        message: 'Listening, but no words yet. Use Chrome/Edge at http://127.0.0.1:43142/, allow the mic, and speak. Or add OpenAI/Groq/Gemini in Settings → Audio for cloud mic STT.'
+        message: 'Browser speech heard no words. Switching to mic capture + cloud STT…'
       });
-    }, 10000);
+      void fallbackToCloudMic();
+    }, 6000);
+  }
+
+  async function fallbackToCloudMic() {
+    if (!capturing || heardSpeech || micMode === 'cloud-mic') return;
+    let info = { available: false, providers: [] };
+    try { info = await api('/api/stt/status'); } catch (_) {}
+    if (!info || !info.available) {
+      emit('status', {
+        message: 'Mic is on, but browser speech isn’t hearing you. Add a free Groq or OpenAI key in Settings → Audio (Whisper), then click listen again.'
+      });
+      return;
+    }
+    stopSpeechRecognition();
+    micMode = 'cloud-mic';
+    syncMicFlags();
+    emit('capture:state', { active: true, streaming: true, mode: 'cloud-mic' });
+    emit('status', {
+      message: 'Using cloud mic STT (' + ((info.providers || []).join('/') || 'cloud') + '). Keep speaking.'
+    });
+    ensureFlushTimer();
   }
 
   // MUST be called synchronously from the listen click (user gesture).
@@ -347,6 +372,8 @@
     const hasDirectWhisper = providers.some(function (p) {
       return p === 'openai' || p === 'groq' || p === 'gemini';
     });
+    // Prefer real Whisper keys. OpenRouter STT needs audio credits, so keep it
+    // behind browser speech unless speech fails (watchdog fallback).
     if (hasDirectWhisper) return { mode: 'cloud-mic', info: info };
     if (hasSpeechApi && window.isSecureContext !== false) return { mode: 'browser-speech', info: info };
     if (info && info.available) return { mode: 'cloud-mic', info: info };
@@ -437,15 +464,32 @@
     micMode: micMode,
     // When true, renderer must NOT open getUserMedia for mic PCM.
     usesBrowserSpeech: hasSpeechApi,
-    // Call synchronously from the listen button click while the user gesture is alive.
+    // Call after mic permission priming (getUserMedia then release) so SpeechRecognition
+    // can actually attach to the microphone.
     startBrowserSpeechNow: function () {
       speechFatal = false;
       speechRestartAttempts = 0;
       heardSpeech = false;
       micMode = 'browser-speech';
       syncMicFlags();
-      // Do NOT set capturing=true here — wait for the server toggle so on/off stays in sync.
       return startSpeechRecognition();
+    },
+    // Release a primed MediaStream before starting browser speech (must not hold the mic).
+    releasePrimedMic: function (stream) {
+      try {
+        if (stream && stream.getTracks) stream.getTracks().forEach(function (t) { t.stop(); });
+      } catch (_) {}
+    },
+    takePrimedMic: function () {
+      const s = window.__apperturePrimedMic || null;
+      window.__apperturePrimedMic = null;
+      return s;
+    },
+    stashPrimedMic: function (stream) {
+      if (window.__apperturePrimedMic && window.__apperturePrimedMic !== stream) {
+        try { window.__apperturePrimedMic.getTracks().forEach(function (t) { t.stop(); }); } catch (_) {}
+      }
+      window.__apperturePrimedMic = stream || null;
     },
     settingsGet: async function () { return api('/api/settings'); },
     settingsSet: async function (patch) {
@@ -476,6 +520,7 @@
     captureToggle: async function (opts) {
       opts = opts || {};
       const speechAlreadyStarted = !!opts.speechAlreadyStarted;
+      const deferSpeech = !!opts.deferSpeech;
       const resolved = await resolveMicMode();
       const st = await api('/api/capture/toggle', { method: 'POST', body: '{}' });
       capturing = !!st.active;
@@ -488,7 +533,8 @@
       });
       if (capturing) {
         if (micMode === 'browser-speech') {
-          if (!speechAlreadyStarted || !recognition) startSpeechRecognition();
+          // Renderer releases the primed getUserMedia stream first, then starts speech.
+          if (!deferSpeech && (!speechAlreadyStarted || !recognition)) startSpeechRecognition();
           ensureFlushTimer();
         } else if (micMode === 'cloud-mic') {
           stopSpeechRecognition();

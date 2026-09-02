@@ -674,19 +674,52 @@
   $('#stop-btn').addEventListener('click', async () => {
     const turningOn = !$('#stop-btn').classList.contains('active');
     let speechAlreadyStarted = false;
-    if (turningOn && apperture.isWeb && typeof apperture.startBrowserSpeechNow === 'function') {
-      // Start SpeechRecognition inside the click gesture BEFORE any await/fetch.
-      // Otherwise Chromium often never attaches the microphone.
+    if (turningOn && apperture.isWeb) {
+      // Unlock mic permission on the click gesture, measure that audio exists, then
+      // either keep the stream for cloud STT or release it for browser speech.
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1
+          }
+        });
+        if (typeof apperture.stashPrimedMic === 'function') apperture.stashPrimedMic(stream);
+        else stream.getTracks().forEach((t) => t.stop());
+      } catch (err) {
+        showStatus('Microphone permission is required to listen. Allow access when the browser prompts you, then click listen again.');
+      }
+    } else if (turningOn && !(apperture.isWeb && apperture.usesBrowserSpeech)) {
+      try { await startSystemAudio(); } catch (_) { /* handled inside startSystemAudio */ }
+    }
+
+    const active = await apperture.captureToggle({ deferSpeech: true, speechAlreadyStarted: false });
+
+    if (turningOn && active && apperture.isWeb && apperture.usesBrowserSpeech) {
+      // Release primed getUserMedia so SpeechRecognition can own the mic, then start it
+      // while we are still in the click's async user-activation chain.
+      const primed = typeof apperture.takePrimedMic === 'function' ? apperture.takePrimedMic() : null;
+      if (primed) {
+        primed.getTracks().forEach((t) => t.stop());
+        await new Promise((r) => setTimeout(r, 120));
+      }
       try {
         speechAlreadyStarted = !!apperture.startBrowserSpeechNow();
       } catch (_) {
         speechAlreadyStarted = false;
       }
-    } else if (turningOn && !(apperture.isWeb && apperture.usesBrowserSpeech)) {
-      try { await startSystemAudio(); } catch (_) { /* handled inside startSystemAudio */ }
+      if (!speechAlreadyStarted) {
+        showStatus('Could not start browser speech. Add a Groq or OpenAI key in Settings → Audio for cloud mic STT.');
+      }
+    } else if (turningOn && active && apperture.isWeb && !apperture.usesBrowserSpeech) {
+      // Cloud mic path: startMic() takes the primed stream via capture:state.
+    } else if (!active) {
+      const primed = typeof apperture.takePrimedMic === 'function' ? apperture.takePrimedMic() : null;
+      if (primed) primed.getTracks().forEach((t) => t.stop());
+      stopSystemAudio();
     }
-    const active = await apperture.captureToggle({ speechAlreadyStarted: speechAlreadyStarted });
-    if (turningOn && !active) stopSystemAudio();
   });
 
   // Transcript toggle removed — sidebar now auto-opens with listening
@@ -707,15 +740,20 @@
   async function startMic() {
     if (micStream) return;
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 16000
-        }
-      });
+      if (typeof apperture.takePrimedMic === 'function') {
+        micStream = apperture.takePrimedMic();
+      }
+      if (!micStream) {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1,
+            sampleRate: 16000
+          }
+        });
+      }
       // getUserMedia can resolve with a stream that has no usable audio track
       // (e.g. a virtual/placeholder device, or a device that was unplugged
       // between permission grant and capture start). Fail loudly here instead
@@ -728,8 +766,25 @@
         showStatus('No microphone audio track was available. Check Windows Sound settings for a working default input device, then try again.');
         return;
       }
-      apperture.log('mic stream started: track=' + (track.label || '(no label — permission may be stale)') + ' muted=' + track.muted);
+      // Make sure the track is live — primed streams can arrive muted/ended.
+      if (track.readyState !== 'live') {
+        micStream.getTracks().forEach((t) => t.stop());
+        micStream = null;
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1,
+            sampleRate: 16000
+          }
+        });
+      }
+      apperture.log('mic stream started: track=' + (track.label || '(no label — permission may be stale)') + ' muted=' + (micStream.getAudioTracks()[0] && micStream.getAudioTracks()[0].muted));
       audioCtx = new AudioContext({ sampleRate: 16000 });
+      if (audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch (_) {}
+      }
 
       // Use AudioWorklet for low-latency, off-main-thread processing
       try {
