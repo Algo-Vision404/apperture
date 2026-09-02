@@ -105,7 +105,10 @@ html, body {
   pointer-events: none;                  /* only the actual UI blocks; gaps pass through */
 }
 #toolbar, #panel-wrap, #settings-scrim, #onboard-scrim, #consent-scrim { pointer-events: auto; }
-#toolbar { -webkit-app-region: drag; }   /* drag the top pill to move the window */
+/* Drag is driven in JS (window:drag-*) — CSS app-region is unreliable on
+   Linux transparent windows and fights click-through mid-drag. */
+#toolbar, .drag-handle, .drag-pill { -webkit-app-region: no-drag; }
+#toolbar button, .tb-logo, .tb-hide, .tb-stop, .tb-quit, .tb-brand { -webkit-app-region: no-drag; }
 #panel-wrap, #panel, #messages, #action-row, #composer, #input, textarea, button, .act, .smart-pill, .more-btn, #send-btn, .s-close, .s-seg button, .ob-buttons button, .ob-ghost, .ob-primary { -webkit-app-region: no-drag; }
 
 /* ============================ Toolbar pill ============================ */
@@ -121,17 +124,21 @@ html, body {
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
 }
-.drag-handle { -webkit-app-region: drag; }
+.drag-handle { -webkit-app-region: no-drag; }
 .drag-pill {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 8px; border-radius: var(--r-pill);
+  padding: 4px 10px; border-radius: var(--r-pill);
   background: rgba(255,255,255,0.06);
   color: rgba(255,255,255,0.8);
   font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
   cursor: grab;
-  -webkit-app-region: drag;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-app-region: no-drag;
 }
 .drag-pill:hover { background: rgba(255,255,255,0.10); }
+.drag-pill:active, body.is-dragging .drag-pill { cursor: grabbing; background: rgba(var(--accent-rgb), 0.16); }
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select: none !important; }
 .drag-dots {
   width: 14px; height: 10px;
   display: inline-block;
@@ -933,7 +940,7 @@ button:focus { outline: none; }
 .tb-brand {
   font-size: 12px; font-weight: 650; letter-spacing: 0.02em;
   color: var(--accent-ink); padding: 0 4px 0 2px;
-  -webkit-app-region: no-drag;
+  pointer-events: none; /* brand is decorative; drag uses the toolbar */
 }
 .s-label-spaced { margin-top: 14px; }
 

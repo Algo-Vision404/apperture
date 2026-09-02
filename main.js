@@ -626,6 +626,47 @@ ipcMain.on('ask', (_e, payload) => runFeature(payload.mode, payload.text));
 ipcMain.on('mic:pcm', (_e, arrayBuffer) => { if (state.capturing) routeAudio('you', arrayBuffer); });
 ipcMain.on('system:pcm', (_e, arrayBuffer) => { if (state.capturing) routeAudio('them', arrayBuffer); });
 ipcMain.on('mouse:ignore', (_e, v) => { if (win) win.setIgnoreMouseEvents(!!v, { forward: true }); });
+
+// Manual window drag — CSS -webkit-app-region:drag is unreliable on Linux
+// transparent frameless windows, and click-through (setIgnoreMouseEvents) can
+// cancel an in-progress CSS drag. Poll the OS cursor so drag survives when the
+// pointer momentarily leaves the moving window.
+let dragOffset = null;
+let dragTimer = null;
+function stopWindowDrag() {
+  if (dragTimer) { clearInterval(dragTimer); dragTimer = null; }
+  dragOffset = null;
+}
+ipcMain.on('window:drag-start', (_e, pos) => {
+  if (!win || win.isDestroyed() || !pos) return;
+  win.setIgnoreMouseEvents(false);
+  const [wx, wy] = win.getPosition();
+  dragOffset = {
+    x: Number(pos.screenX) - wx,
+    y: Number(pos.screenY) - wy
+  };
+  if (dragTimer) clearInterval(dragTimer);
+  dragTimer = setInterval(() => {
+    if (!win || win.isDestroyed() || !dragOffset) return;
+    const p = screen.getCursorScreenPoint();
+    win.setPosition(Math.round(p.x - dragOffset.x), Math.round(p.y - dragOffset.y));
+  }, 16);
+});
+ipcMain.on('window:drag-move', (_e, pos) => {
+  // Optional hint from renderer; interval polling is the source of truth.
+  if (!win || win.isDestroyed() || !dragOffset || !pos) return;
+  win.setPosition(
+    Math.round(Number(pos.screenX) - dragOffset.x),
+    Math.round(Number(pos.screenY) - dragOffset.y)
+  );
+});
+ipcMain.on('window:drag-end', () => {
+  stopWindowDrag();
+  if (win && !win.isDestroyed()) {
+    const [x, y] = win.getPosition();
+    store.setSettings({ windowX: x, windowY: y });
+  }
+});
 ipcMain.on('open-pane', (_e, url) => { shell.openExternal(url).catch(() => {}); });
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('log', (_e, msg) => console.log('[renderer]', msg));
@@ -826,6 +867,7 @@ app.whenReady().then(async () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  stopWindowDrag();
   // Best effort, deliberately not blocking the quit: the library also removes
   // the instance file from a `process.on('exit')` handler, and a file left
   // behind is harmless anyway because readers check whether the PID is alive.

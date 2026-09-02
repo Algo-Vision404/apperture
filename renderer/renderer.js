@@ -1605,13 +1605,53 @@
 
   // ---- click-through: only the UI blocks the mouse; empty gaps pass to your screen ----
   let ignoring = null;
-  function setIgnore(v) { if (v !== ignoring) { ignoring = v; cue.setIgnoreMouse(v); } }
+  let isDragging = false;
+  function setIgnore(v) {
+    if (isDragging) return; // never flip click-through mid-drag
+    if (v !== ignoring) { ignoring = v; cue.setIgnoreMouse(v); }
+  }
   document.addEventListener('mousemove', (e) => {
+    if (isDragging) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const overUI = !!(el && el.closest && el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim'));
     setIgnore(!overUI);
   });
   setIgnore(true); // start fully click-through; hovering the panel re-enables it
+
+  // ---- window drag (manual — reliable on Linux + with click-through) ----
+  function dragTarget(el) {
+    if (!el || !el.closest) return null;
+    if (el.closest('button, a, input, textarea, select, .tb-hide, .tb-stop, .tb-quit, .tb-logo')) return null;
+    return el.closest('#toolbar, .drag-pill, .drag-handle');
+  }
+  function onDragMove(e) {
+    if (!isDragging) return;
+    cue.dragMove(e.screenX, e.screenY);
+  }
+  function onDragEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    document.body.classList.remove('is-dragging');
+    cue.dragEnd();
+    window.removeEventListener('mousemove', onDragMove, true);
+    window.removeEventListener('mouseup', onDragEnd, true);
+    window.removeEventListener('blur', onDragEnd, true);
+  }
+  document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (!dragTarget(e.target)) return;
+    // Keep mouse events on the window so drag survives click-through.
+    setIgnore(false);
+    ignoring = false;
+    cue.setIgnoreMouse(false);
+    isDragging = true;
+    document.body.classList.add('is-dragging');
+    cue.dragStart(e.screenX, e.screenY);
+    window.addEventListener('mousemove', onDragMove, true);
+    window.addEventListener('mouseup', onDragEnd, true);
+    window.addEventListener('blur', onDragEnd, true);
+    e.preventDefault();
+  }, true);
 
   // ---- assistant access request ------------------------------------------
   // Shown here rather than as a native dialog because cue hides its dock icon:

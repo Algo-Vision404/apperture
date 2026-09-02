@@ -100,6 +100,36 @@
     micPcm: function () {},
     systemPcm: function () {},
     setIgnoreMouse: function () {},
+    dragStart: function (screenX, screenY) {
+      const app = document.getElementById('app');
+      if (!app) return;
+      if (!app.style.position || app.style.position === 'static') {
+        const rect = app.getBoundingClientRect();
+        app.style.position = 'fixed';
+        app.style.left = rect.left + 'px';
+        app.style.top = rect.top + 'px';
+        app.style.right = 'auto';
+        app.style.margin = '0';
+        app.style.width = rect.width + 'px';
+        app.dataset.dragReady = '1';
+      }
+      const left = parseFloat(app.style.left) || 0;
+      const top = parseFloat(app.style.top) || 0;
+      app.dataset.dragOx = String(screenX - left);
+      app.dataset.dragOy = String(screenY - top);
+    },
+    dragMove: function (screenX, screenY) {
+      const app = document.getElementById('app');
+      if (!app || !app.dataset.dragOx) return;
+      app.style.left = (screenX - Number(app.dataset.dragOx)) + 'px';
+      app.style.top = (screenY - Number(app.dataset.dragOy)) + 'px';
+    },
+    dragEnd: function () {
+      const app = document.getElementById('app');
+      if (!app) return;
+      delete app.dataset.dragOx;
+      delete app.dataset.dragOy;
+    },
     clearTranscript: async function () { emit('transcript', { turns: [] }); return true; },
     openPane: function (url) { try { window.open(url, '_blank'); } catch (e) {} },
     appLinkState: async function () { return { callers: [] }; },
