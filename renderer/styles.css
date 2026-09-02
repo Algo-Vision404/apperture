@@ -95,9 +95,99 @@
   --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Scrollbars — floating filament, not OS chrome */
+  --sb-size: 9px;
+  --sb-pad: 2px;
+  --sb-thumb: rgba(255, 236, 190, 0.16);
+  --sb-thumb-hover: rgba(232, 184, 74, 0.58);
+  --sb-thumb-active: rgba(212, 160, 23, 0.78);
 }
 
 * { box-sizing: border-box; }
+
+/* ============================ Scrollbars ============================ */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-thumb) transparent;
+}
+
+/* Chromium / Electron — slim pill thumb, transparent track, brass on engage */
+*::-webkit-scrollbar {
+  width: var(--sb-size);
+  height: var(--sb-size);
+  background: transparent;
+}
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track-piece {
+  background: transparent;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+  border: none;
+}
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--sb-thumb);
+  background-clip: padding-box;
+  border: var(--sb-pad) solid transparent;
+  border-radius: 999px;
+  min-height: 28px;
+  min-width: 28px;
+  transition: background-color 160ms var(--ease);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--sb-thumb-hover);
+}
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--sb-thumb-active);
+}
+
+/* Primary panels: quieter at rest, filament on hover */
+#messages,
+#input,
+.ts-list,
+.transcript-wrap,
+.s-tab-pane,
+.s-tabs,
+.ai-text pre {
+  scrollbar-gutter: auto;
+}
+#messages::-webkit-scrollbar-thumb,
+#input::-webkit-scrollbar-thumb,
+.ts-list::-webkit-scrollbar-thumb,
+.transcript-wrap::-webkit-scrollbar-thumb,
+.s-tab-pane::-webkit-scrollbar-thumb,
+.ai-text pre::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 236, 190, 0.08);
+}
+#messages:hover::-webkit-scrollbar-thumb,
+#input:hover::-webkit-scrollbar-thumb,
+.ts-list:hover::-webkit-scrollbar-thumb,
+.transcript-wrap:hover::-webkit-scrollbar-thumb,
+.s-tab-pane:hover::-webkit-scrollbar-thumb,
+.ai-text pre:hover::-webkit-scrollbar-thumb,
+#messages::-webkit-scrollbar-thumb:hover,
+#input::-webkit-scrollbar-thumb:hover,
+.ts-list::-webkit-scrollbar-thumb:hover,
+.transcript-wrap::-webkit-scrollbar-thumb:hover,
+.s-tab-pane::-webkit-scrollbar-thumb:hover,
+.ai-text pre::-webkit-scrollbar-thumb:hover {
+  background-color: var(--sb-thumb-hover);
+}
+#messages::-webkit-scrollbar-thumb:active,
+#input::-webkit-scrollbar-thumb:active,
+.ts-list::-webkit-scrollbar-thumb:active,
+.transcript-wrap::-webkit-scrollbar-thumb:active,
+.s-tab-pane::-webkit-scrollbar-thumb:active,
+.ai-text pre::-webkit-scrollbar-thumb:active {
+  background-color: var(--sb-thumb-active);
+}
 
 html, body {
   margin: 0;
@@ -337,7 +427,11 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 #panel > *, #panel-columns, #panel-main { position: relative; z-index: 1; }
 
 /* ============================ Messages ============================ */
-#messages { display: flex; flex-direction: column; overflow-y: auto; max-height: 50vh; gap: 2px; }
+#messages {
+  display: flex; flex-direction: column; overflow-y: auto; max-height: 50vh; gap: 2px;
+  padding-right: 2px; /* room for floating thumb without clipping voice text */
+  overscroll-behavior: contain;
+}
 .user-bubble {
   align-self: flex-end;
   max-width: 78%;
@@ -367,6 +461,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   border-radius: 12px;
   padding: 13px 15px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   font-family: var(--mono);
   font-size: 13px; line-height: 1.5;
   margin: 12px 0;
@@ -599,6 +694,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   background: transparent; color: var(--tx-1);
   font-family: var(--font); font-size: 15px; line-height: 22px;
   max-height: 140px; overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-user-select: text; user-select: text;
 }
 #composer-bottom { display: flex; align-items: center; gap: 8px; }
@@ -678,7 +774,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .s-tab.on { border-color: rgba(var(--accent-rgb), 0.48); color: var(--accent-ink); background: rgba(var(--accent-rgb), 0.12); }
 
 /* Tab panes */
-.s-tab-pane { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; }
+.s-tab-pane { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; overscroll-behavior: contain; padding-right: 2px; }
 .s-tab-pane.hidden { display: none; }
 
 .s-body { display: flex; flex-direction: column; gap: 8px; }
@@ -860,8 +956,8 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   display: flex;
   flex-direction: column;
   gap: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.12) transparent;
+  padding-right: 2px;
+  overscroll-behavior: contain;
 }
 .ts-placeholder { 
   font-size: 11.5px; 
@@ -940,6 +1036,8 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .transcript-wrap {
   max-height: 150px; overflow-y: auto; margin: 6px 0 4px;
   border-top: 1px solid var(--bd-hair); padding-top: 6px;
+  padding-right: 2px;
+  overscroll-behavior: contain;
 }
 .transcript-list { display: flex; flex-direction: column; gap: 3px; }
 .tc-turn { font-size: 12.5px; line-height: 1.4; color: var(--tx-2);

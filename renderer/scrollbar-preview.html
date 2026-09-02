@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>cue — scrollbar preview</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    html, body {
+      background:
+        radial-gradient(900px 480px at 12% 0%, rgba(212,160,23,0.16), transparent 55%),
+        linear-gradient(165deg, #151922 0%, #07080b 48%, #0d1218 100%) !important;
+      overflow: auto !important;
+      min-height: 100%;
+      padding: 36px 28px 48px;
+    }
+    .stage {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 22px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--glass-strong);
+      border: 1px solid var(--bd-hair);
+      border-radius: var(--r-panel);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+      padding: 18px 16px 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 420px;
+    }
+    .label {
+      font-family: var(--font-brand);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent-ink);
+      opacity: 0.9;
+    }
+    #messages {
+      max-height: 340px;
+      min-height: 340px;
+    }
+    .ts-list {
+      max-height: 340px;
+      min-height: 340px;
+    }
+    .code-wrap {
+      max-height: 120px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      background: rgba(0,0,0,0.40);
+      border: 1px solid rgba(255,236,190,0.08);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--tx-2);
+      white-space: pre;
+    }
+    h1 {
+      font-family: var(--font-brand);
+      font-size: 22px;
+      margin: 0 0 6px;
+      color: var(--tx-1);
+    }
+    .sub { color: var(--tx-mut); margin: 0 0 22px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Scrollbar filament</h1>
+  <p class="sub">Quiet at rest · brass on hover · shared across messages, history, code</p>
+  <div class="stage">
+    <div class="card">
+      <div class="label">Messages</div>
+      <div id="messages"></div>
+      <div class="label">Code lane</div>
+      <div class="code-wrap" id="code"></div>
+    </div>
+    <div class="card">
+      <div class="label">History</div>
+      <div class="ts-list" id="hist"></div>
+    </div>
+  </div>
+  <script>
+    const msgs = document.getElementById('messages');
+    for (let i = 0; i < 8; i++) {
+      const u = document.createElement('div');
+      u.className = 'user-bubble';
+      u.textContent = i % 2 ? 'What should I say?' : 'Assist on this beat';
+      msgs.appendChild(u);
+      const a = document.createElement('div');
+      a.className = 'ai-text small';
+      a.textContent = 'Lead with the outcome, then the constraint you removed. Keep it one breath: problem, move, proof. At my last role the checkout drop was real — we cut a flag, shipped a retry queue, and watched tickets fall.';
+      msgs.appendChild(a);
+    }
+    msgs.scrollTop = 90;
+
+    const hist = document.getElementById('hist');
+    const lines = [
+      ['ts-you', 'You — I owned the flaky checkout pipeline.'],
+      ['ts-them', 'Them — Walk me through the metrics.'],
+      ['ts-you', 'You — Drop-offs fell under one percent in two sprints.'],
+      ['ts-them', 'Them — What did you cut first?'],
+      ['ts-you', 'You — The risky path behind a feature flag.'],
+      ['ts-them', 'Them — And support load?'],
+      ['ts-you', 'You — Payment-error tickets halved.'],
+      ['ts-them', 'Them — Nice. Tell me about the retry queue.'],
+      ['ts-you', 'You — Idempotent workers with latency budgets.'],
+      ['ts-them', 'Them — How did you measure confidence?']
+    ];
+    for (let i = 0; i < 18; i++) {
+      const [cls, text] = lines[i % lines.length];
+      const row = document.createElement('div');
+      row.className = 'ts-turn ' + cls;
+      row.textContent = text;
+      hist.appendChild(row);
+    }
+    hist.scrollTop = 40;
+
+    document.getElementById('code').textContent =
+      'async function captureLoop(stream) {\n' +
+      '  const track = stream.getAudioTracks()[0];\n' +
+      '  const ctx = new AudioContext({ sampleRate: 16000 });\n'.repeat(14);
+  </script>
+</body>
+</html>
