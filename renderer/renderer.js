@@ -1514,6 +1514,8 @@
     document.querySelectorAll('#stt-provider-seg button').forEach((button) => {
       button.classList.toggle('on', button.dataset.sttProvider === (settings.sttProvider || 'auto'));
     });
+    syncSttKeyFieldsFromKeys();
+    updateSttKeyVisibility(settings.sttProvider || 'auto');
     const orStt = document.getElementById('openrouter-stt-model');
     if (orStt) {
       orStt.value = settings.openrouterSttModel
@@ -1656,8 +1658,69 @@
     document.querySelectorAll('#stt-provider-seg button').forEach((candidate) => {
       candidate.classList.toggle('on', candidate === button);
     });
+    updateSttKeyVisibility(settings.sttProvider || 'auto');
     $('#s-status').textContent = statusText();
   }));
+
+  const STT_KEY_PROVIDERS = ['groq', 'openai', 'gemini', 'deepgram', 'openrouter'];
+
+  function syncSttKeyFieldsFromKeys() {
+    STT_KEY_PROVIDERS.forEach((provider) => {
+      const main = document.getElementById('key-' + provider);
+      const stt = document.getElementById('stt-key-' + provider);
+      if (main && stt) stt.value = main.value || '';
+    });
+  }
+
+  function syncKeysFromSttKeyFields() {
+    STT_KEY_PROVIDERS.forEach((provider) => {
+      const main = document.getElementById('key-' + provider);
+      const stt = document.getElementById('stt-key-' + provider);
+      if (main && stt && stt.value.trim()) main.value = stt.value.trim();
+      else if (main && stt && !stt.value.trim() && main.value.trim()) stt.value = main.value.trim();
+    });
+  }
+
+  function updateSttKeyVisibility(provider) {
+    const selected = provider || 'auto';
+    STT_KEY_PROVIDERS.forEach((name) => {
+      const wrap = document.getElementById('stt-key-' + name + '-wrap');
+      if (!wrap) return;
+      const show = selected === 'auto' || selected === name;
+      wrap.classList.toggle('hidden', !show);
+    });
+    const orModel = document.getElementById('openrouter-stt-model');
+    const orModelWrap = orModel && orModel.closest('.s-field');
+    if (orModelWrap) orModelWrap.classList.toggle('hidden', selected !== 'auto' && selected !== 'openrouter');
+    const hint = document.getElementById('stt-key-hint');
+    if (hint) {
+      if (selected === 'groq') {
+        hint.innerHTML = 'Paste your Groq key here (<code>gsk_...</code>), then click <strong>Done</strong>. Get one free at console.groq.com.';
+      } else if (selected === 'openai') {
+        hint.innerHTML = 'Paste your OpenAI key here (<code>sk-...</code>), then click <strong>Done</strong>.';
+      } else if (selected === 'gemini') {
+        hint.innerHTML = 'Paste your Gemini key here, then click <strong>Done</strong>.';
+      } else if (selected === 'deepgram') {
+        hint.innerHTML = 'Paste your Deepgram key here for streaming STT, then click <strong>Done</strong>.';
+      } else if (selected === 'openrouter') {
+        hint.innerHTML = 'Paste your OpenRouter key here. Audio needs ~$0.50 in OpenRouter credits, or switch to <strong>Groq</strong> for free Whisper.';
+      } else if (selected === 'local') {
+        hint.innerHTML = 'Local Whisper runs in the Electron app only — no cloud key needed here.';
+      } else {
+        hint.innerHTML = 'Auto uses the first available speech key (Groq / OpenAI / Gemini / OpenRouter). Paste a <strong>Groq</strong> <code>gsk_...</code> key below for free mic captions.';
+      }
+    }
+  }
+
+  // Keep Audio-tab and Keys-tab fields in sync while typing.
+  STT_KEY_PROVIDERS.forEach((provider) => {
+    const main = document.getElementById('key-' + provider);
+    const stt = document.getElementById('stt-key-' + provider);
+    if (main && stt) {
+      main.addEventListener('input', () => { stt.value = main.value; });
+      stt.addEventListener('input', () => { main.value = stt.value; });
+    }
+  });
 
   function formatBytes(bytes) {
     if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
@@ -1839,9 +1902,21 @@
     settings.apiKeys.custom = $('#key-custom').value.trim();
     settings.baseUrl = $('#base-url').value.trim();
     settings.apiKeys.ollama = $('#key-ollama').value.trim();
+    syncKeysFromSttKeyFields();
     settings.apiKeys.groq = $('#key-groq').value.trim();
     settings.apiKeys.minimax = $('#key-minimax').value.trim();
     settings.apiKeys.azure = $('#key-azure').value.trim();
+    // Prefer Audio-tab values when present (same keys, easier to find).
+    const sttGroq = document.getElementById('stt-key-groq');
+    const sttOpenAI = document.getElementById('stt-key-openai');
+    const sttGemini = document.getElementById('stt-key-gemini');
+    const sttDeepgram = document.getElementById('stt-key-deepgram');
+    const sttOpenRouter = document.getElementById('stt-key-openrouter');
+    if (sttGroq && sttGroq.value.trim()) settings.apiKeys.groq = sttGroq.value.trim();
+    if (sttOpenAI && sttOpenAI.value.trim()) settings.apiKeys.openai = sttOpenAI.value.trim();
+    if (sttGemini && sttGemini.value.trim()) settings.apiKeys.gemini = sttGemini.value.trim();
+    if (sttDeepgram && sttDeepgram.value.trim()) settings.apiKeys.deepgram = sttDeepgram.value.trim();
+    if (sttOpenRouter && sttOpenRouter.value.trim()) settings.apiKeys.openrouter = sttOpenRouter.value.trim();
     settings.azureEndpoint = $('#azure-endpoint').value.trim();
     if (!settings.models[settings.provider]) settings.models[settings.provider] = {};
     settings.models[settings.provider].fast = $('#model-fast').value.trim();

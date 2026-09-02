@@ -181,8 +181,17 @@
           <button data-stt-provider="gemini">Gemini</button>
           <button data-stt-provider="openrouter">OpenRouter</button>
         </div>
+
+        <label class="s-label">Speech API keys <span class="s-hint">same keys as the Keys tab · stored locally</span></label>
+        <div id="stt-key-groq-wrap" class="s-field stt-key-wrap"><span>Groq</span><input id="stt-key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
+        <div id="stt-key-openai-wrap" class="s-field stt-key-wrap"><span>OpenAI</span><input id="stt-key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
+        <div id="stt-key-gemini-wrap" class="s-field stt-key-wrap"><span>Gemini</span><input id="stt-key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
+        <div id="stt-key-deepgram-wrap" class="s-field stt-key-wrap"><span>Deepgram</span><input id="stt-key-deepgram" type="password" placeholder="dg-..." autocomplete="off" /></div>
+        <div id="stt-key-openrouter-wrap" class="s-field stt-key-wrap"><span>OpenRouter</span><input id="stt-key-openrouter" type="password" placeholder="sk-or-v1-..." autocomplete="off" /></div>
+        <div class="s-note" id="stt-key-hint">Pick <strong>Groq</strong> above, paste your <code>gsk_...</code> key here, then save. Free Groq Whisper works for mic captions.</div>
+
         <div class="s-field"><span>OpenRouter ASR</span><input id="openrouter-stt-model" type="text" autocomplete="off" placeholder="nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b" /></div>
-        <div class="s-note">Default OpenRouter speech model is <strong>NVIDIA Nemotron 3.5 ASR</strong>. OpenRouter audio needs about <strong>$0.50 in credits</strong> on your OpenRouter account. For free mic captions, add a <strong>Groq</strong> or <strong>OpenAI</strong> key in Keys instead.</div>
+        <div class="s-note">OpenRouter’s default speech model is <strong>NVIDIA Nemotron 3.5 ASR</strong> and needs about <strong>$0.50 in OpenRouter credits</strong>. Prefer <strong>Groq</strong> above for free mic captions.</div>
         <div class="s-note">Local mode keeps microphone and meeting audio on this computer. It never silently falls back to a cloud transcription provider.</div>
 
         <div class="whisper-card">
