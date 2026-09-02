@@ -24,7 +24,7 @@
     <!-- Main assistant panel -->
     <div id="panel-wrap">
       <span id="live-dot" class="off"></span>
-      <div id="stt-status" class="stt-status stt-disconnected" title="STT connection status">off</div>
+      <div id="stt-status" class="stt-status stt-disconnected" title="STT connection status" hidden>off</div>
       <div id="panel" class="glass no-drag">
 
         <!-- Two-column layout: responses (left) + live transcript sidebar (right) -->
@@ -32,7 +32,13 @@
 
           <!-- Left column: AI responses -->
           <div id="panel-main">
-            <div id="messages"></div>
+            <div id="messages">
+              <div class="messages-empty" id="messages-empty">
+                <div class="me-kicker">cue</div>
+                <div class="me-title">Ready when you are</div>
+                <div class="me-body">Tap the mic to listen, or ask about what’s on screen.</div>
+              </div>
+            </div>
 
             <div id="action-row">
               <button class="act act-primary" data-mode="say"
@@ -51,7 +57,7 @@
 
             <div id="composer">
               <div id="input-area">
-                <div id="placeholder">Ask about your screen or conversation, or <span class="keycap">⌘</span><span class="keycap">⏎</span> for Assist</div>
+                <div id="placeholder">Ask about your screen or conversation</div>
                 <textarea id="input" rows="1" spellcheck="false"></textarea>
               </div>
               <div id="composer-bottom">
@@ -85,7 +91,9 @@
         <div class="ts-placeholder">Conversation history will appear here when listening.</div>
       </div>
       <div class="ts-footer">
-        <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear all history">Clear History</button>
+        <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear conversation history">
+          <span class="ic"></span><span>Clear history</span>
+        </button>
       </div>
     </div>
   </div>
@@ -111,7 +119,7 @@
       <!-- Tab: Keys -->
       <div class="s-body s-tab-pane" data-pane="keys">
         <label class="s-label">Provider</label>
-        <div class="s-seg" id="provider-seg">
+        <div class="s-seg s-seg-wrap" id="provider-seg">
           <button data-provider="openai">OpenAI</button>
           <button data-provider="anthropic">Anthropic</button>
           <button data-provider="gemini">Gemini</button>

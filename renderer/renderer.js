@@ -22,7 +22,7 @@
   $('#more-btn').innerHTML = icon('more-horizontal', { size: 16 });
   $('#send-btn').innerHTML = icon('send', { size: 14 });
   const clearIC = document.querySelector('#clear-transcript-btn .ic');
-  if (clearIC) clearIC.innerHTML = icon('trash-2', { size: 14 });
+  if (clearIC) clearIC.innerHTML = icon('trash-2', { size: 13 });
   const closeSidebarIcon = document.getElementById('close-sidebar-btn');
   if (closeSidebarIcon) closeSidebarIcon.innerHTML = icon('x', { size: 14, stroke: 2 });
 
@@ -63,9 +63,33 @@
     return html;
   }
 
-  function clearMessages() { messages.innerHTML = ''; aiEl = null; caretEl = null; }
+  function clearMessages() {
+    messages.innerHTML = '';
+    aiEl = null;
+    caretEl = null;
+    responseCount = 0;
+    showEmptyState();
+  }
+
+  function showEmptyState() {
+    if (messages.querySelector('.messages-empty')) return;
+    const empty = document.createElement('div');
+    empty.className = 'messages-empty';
+    empty.id = 'messages-empty';
+    empty.innerHTML =
+      '<div class="me-kicker">cue</div>' +
+      '<div class="me-title">Ready when you are</div>' +
+      '<div class="me-body">Tap the mic to listen, or ask about what’s on screen.</div>';
+    messages.appendChild(empty);
+  }
+
+  function hideEmptyState() {
+    const empty = messages.querySelector('.messages-empty');
+    if (empty) empty.remove();
+  }
 
   function addUserBubble(text) {
+    hideEmptyState();
     const b = document.createElement('div');
     b.className = 'user-bubble';
     b.textContent = text;
@@ -73,6 +97,7 @@
   }
 
   function startAi(small) {
+    hideEmptyState();
     aiEl = document.createElement('div');
     aiEl.className = 'ai-text' + (small ? ' small' : '');
     aiEl.dataset.raw = '';
@@ -281,25 +306,28 @@
       questionHistory.shift();
     }
     
-    updateHistoryBadge(); // FIX #14: Update badge when history changes
+    updateQuestionReadyState();
+    // Badge tracks transcript turns — undo stack no longer drives it
   }
   
-  // FIX #14: History button badge showing count
+  // FIX #14: History button badge = transcript turns (not undo stack)
   function updateHistoryBadge() {
     const historyBtn = document.getElementById('history-btn');
     if (!historyBtn) return;
-    
-    // Remove existing badge if any
+
     let badge = historyBtn.querySelector('.history-badge');
-    
-    const count = questionHistory.length;
+    const list = document.getElementById('ts-list');
+    const count = list
+      ? list.querySelectorAll('.ts-turn:not(.ts-interim-row)').length
+      : 0;
+
     if (count > 0) {
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'history-badge';
         historyBtn.appendChild(badge);
       }
-      badge.textContent = count > 9 ? '9+' : count;
+      badge.textContent = count > 9 ? '9+' : String(count);
       badge.style.display = '';
     } else if (badge) {
       badge.style.display = 'none';
@@ -316,7 +344,6 @@
       composer.classList.add('stt-filling');
       updateQuestionReadyState();
       syncPlaceholder();
-      updateHistoryBadge(); // Update badge after removing from history
       showToast('Question restored', 1500);
       return true;
     }
@@ -422,9 +449,7 @@
     clearInputInterim(); // FIX #5: Clear interim when clearing input
     syncPlaceholder();
     updateSendButtonState(); // FIX #9
-    updateHistoryBadge(); // FIX #14
-    
-    // FIX #10: Show undo hint when explicitly cleared
+
     if (showUndoHint && hadContent) {
       const undoHint = isWindows ? 'Ctrl+Z to undo' : '⌘Z to undo';
       showToast(`Cleared · ${undoHint}`, 2000);
@@ -559,7 +584,10 @@
   function toggleHide() {
     const collapsed = $('#panel').classList.toggle('collapsed');
     $('#hide-btn').classList.toggle('collapsed', collapsed);
+    $('#panel-wrap').classList.toggle('panel-collapsed', collapsed);
     $('#live-dot').style.display = collapsed ? 'none' : '';
+    const stt = $('#stt-status');
+    if (stt) stt.style.display = collapsed ? 'none' : '';
   }
   $('#hide-btn').addEventListener('click', toggleHide);
   cue.on('hide:toggle', toggleHide);
@@ -583,22 +611,10 @@
   const clearTranscriptBtn = document.getElementById('clear-transcript-btn');
   if (clearTranscriptBtn) {
     clearTranscriptBtn.addEventListener('click', async () => {
-      // Save current input to history before clearing (for undo)
-      saveToQuestionHistory(input.value);
-      
       await cue.clearTranscript();
-      clearMessages();
-      // Also clear the floating interim bar
-      if (interimEl) { interimEl.textContent = ''; interimEl.classList.remove('show'); }
-      // FIX #1: Use ts-list instead of non-existent transcript-list
-      const list = document.getElementById('ts-list');
-      if (list) list.innerHTML = '<div class="ts-placeholder">Conversation history will appear here when listening.</div>';
-      transcriptInterimEl = null;
-      clearTranscriptSidebar(); // clear the history sidebar too
-      hardClearSTTFill(); // clear the input box too
-      
-      const undoHint = isWindows ? 'Ctrl+Z to undo' : '⌘Z to undo';
-      showToast(`Transcript cleared · ${undoHint}`, 3500);
+      clearTranscriptSidebar();
+      updateHistoryBadge();
+      showToast('Conversation history cleared', 2500);
     });
   }
 
@@ -793,10 +809,11 @@
       sttState = 'disconnected';
       label.textContent = 'off';
     } else if (active === true) {
-      sttState = streaming ? 'connecting' : 'batch';
+      sttState = streaming ? 'live' : 'batch';
       label.textContent = sttState;
     }
-    label.className = 'stt-status stt-' + sttState;
+    label.className = 'stt-status stt-' + (sttState === 'live' ? 'streaming' : sttState);
+    label.hidden = sttState === 'disconnected';
   }
 
   // ---- transcript history sidebar (hidden by default, manual toggle) ----
@@ -864,7 +881,7 @@
     if (ph) ph.remove();
 
     if (isInterim) {
-      // Update the single floating interim row
+      // Update the single floating interim row — refresh channel if speaker switches
       if (!tsSidebarInterimEl) {
         tsSidebarInterimEl = document.createElement('div');
         tsSidebarInterimEl.className = 'ts-turn ts-' + channel + ' ts-interim-row';
@@ -876,6 +893,10 @@
         tsSidebarInterimEl.appendChild(chLabel);
         tsSidebarInterimEl.appendChild(txt);
         list.appendChild(tsSidebarInterimEl);
+      } else {
+        tsSidebarInterimEl.className = 'ts-turn ts-' + channel + ' ts-interim-row';
+        const chLabel = tsSidebarInterimEl.querySelector('.ts-channel');
+        if (chLabel) chLabel.textContent = channel === 'them' ? 'Them' : 'You';
       }
       tsSidebarInterimEl.querySelector('.ts-text').textContent = text;
     } else {
@@ -920,6 +941,7 @@
       tsLastRow[other] = null;
 
       list.scrollTop = list.scrollHeight;
+      updateHistoryBadge();
     }
   }
 
@@ -929,6 +951,7 @@
     tsSidebarInterimEl = null;
     tsLastRow.you = null; tsLastRow.them = null;
     clearTimeout(tsRowTimer.you); clearTimeout(tsRowTimer.them);
+    updateHistoryBadge();
   }
 
   // ---- events from main --------------------------------------------------
@@ -995,17 +1018,19 @@
     if (!inputInterimEl) {
       inputInterimEl = document.createElement('span');
       inputInterimEl.className = 'input-interim';
-      // FIX #2: Insert into composer (not input-area) for correct positioning
       composer.appendChild(inputInterimEl);
     }
     inputInterimEl.textContent = text;
-    inputInterimEl.style.display = text ? 'block' : 'none';
+    const on = !!text;
+    inputInterimEl.style.display = on ? 'block' : 'none';
+    composer.classList.toggle('has-interim', on);
   }
   function clearInputInterim() {
     if (inputInterimEl) {
       inputInterimEl.textContent = '';
       inputInterimEl.style.display = 'none';
     }
+    composer.classList.remove('has-interim');
   }
   
   cue.on('stt:interim', ({ channel, text }) => {
@@ -1031,8 +1056,8 @@
   });
   cue.on('stt:status', ({ channel, status, provider }) => {
     cue.log(`[stt] ${provider || channel || 'unknown'} ${status}`);
+    const label = document.getElementById('stt-status');
     if (provider === 'local') {
-      const label = document.getElementById('stt-status');
       const localLabels = {
         loading: 'loading local',
         ready: 'local',
@@ -1045,6 +1070,7 @@
       if (label) {
         label.textContent = localLabels[status] || status;
         label.className = 'stt-status stt-' + sttState;
+        label.hidden = status === 'off';
       }
       if (status === 'loading') { $('#stop-btn').classList.add('active'); setListenIcon(true); }
       if (status === 'off' || status === 'error') { $('#stop-btn').classList.remove('active'); setListenIcon(false); }
@@ -1053,16 +1079,32 @@
       if (status === 'off') setLiveDotState('off');
       return;
     }
-    if (status === 'connected') {
+    if (status === 'connected' || status === 'streaming') {
       sttState = 'streaming';
-      const label = document.getElementById('stt-status');
-      if (label) { label.textContent = sttState; label.className = 'stt-status stt-streaming'; }
+      if (label) {
+        label.textContent = 'live';
+        label.className = 'stt-status stt-streaming';
+        label.hidden = false;
+      }
+    } else if (status === 'disconnected' || status === 'off') {
+      sttState = 'disconnected';
+      if (label) {
+        label.textContent = 'off';
+        label.className = 'stt-status stt-disconnected';
+        label.hidden = true;
+      }
+    } else if (status === 'error' && label) {
+      sttState = 'error';
+      label.textContent = 'error';
+      label.className = 'stt-status stt-error';
+      label.hidden = false;
     }
   });
   cue.on('vad:state', ({ channel, speaking }) => {
     setLiveDotState(speaking ? 'speaking' : 'idle');
   });
   cue.on('llm:start', ({ userBubble, small, category }) => {
+    hideEmptyState();
     responseCount++;
     if (responseCount > MAX_RESPONSES) {
       const oldest = messages.querySelector('.response-group');
@@ -1167,6 +1209,8 @@
     counter.textContent = String(n);
     counter.classList.toggle('over', n >= cap);
     counter.parentElement.classList.toggle('s-counter-warn', n >= cap - 100);
+    const hint = document.querySelector('#settings .s-hint-block');
+    if (hint) hint.classList.toggle('s-hint-warn', n >= cap - 100);
   }
   const aiRulesEl = document.getElementById('ai-rules');
   if (aiRulesEl) aiRulesEl.addEventListener('input', updateAiRulesCounter);
@@ -1414,7 +1458,16 @@
 
   function renderWhisperModelState() {
     const model = getSelectedWhisperModel();
-    if (!model) return;
+    if (!model) {
+      $('#whisper-model-detail').textContent = 'Local Whisper is only available in the Electron app.';
+      $('#whisper-progress-wrap').classList.add('hidden');
+      $('#whisper-download').disabled = true;
+      $('#whisper-download').textContent = 'Unavailable';
+      $('#whisper-cancel').classList.add('hidden');
+      $('#whisper-import').disabled = true;
+      $('#whisper-delete').disabled = true;
+      return;
+    }
     const language = model.englishOnly ? 'English only' : 'Multilingual';
     const recommendation = model.recommended ? ' · recommended default' : '';
     const partial = model.partialBytes > 0 && !model.installed
@@ -1439,16 +1492,31 @@
     try {
       const previousSelection = $('#whisper-model').value || settings.localWhisper?.modelId || 'base.en';
       whisperOverview = await cue.whisperModels();
+      const runtime = whisperOverview.runtime || {
+        available: !!whisperOverview.runtimeReady,
+        version: '',
+        target: '',
+        message: whisperOverview.runtimeError || whisperOverview.runtimeMessage || ''
+      };
+      whisperOverview.runtime = runtime;
+      whisperOverview.models = whisperOverview.models || [];
+
       const runtimeBadge = $('#whisper-runtime-status');
-      runtimeBadge.classList.toggle('ready', whisperOverview.runtime.available);
-      runtimeBadge.classList.toggle('error', !whisperOverview.runtime.available);
-      runtimeBadge.textContent = whisperOverview.runtime.available
-        ? `Ready · v${whisperOverview.runtime.version} · ${whisperOverview.runtime.target}`
+      runtimeBadge.classList.toggle('ready', !!runtime.available);
+      runtimeBadge.classList.toggle('error', !runtime.available);
+      runtimeBadge.textContent = runtime.available
+        ? `Ready · v${runtime.version} · ${runtime.target}`
         : 'Not prepared';
-      runtimeBadge.title = whisperOverview.runtime.message || '';
+      runtimeBadge.title = runtime.message || '';
 
       const select = $('#whisper-model');
       select.innerHTML = '';
+      if (!whisperOverview.models.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No local models available';
+        select.appendChild(option);
+      }
       for (const model of whisperOverview.models) {
         const option = document.createElement('option');
         option.value = model.id;
@@ -1456,15 +1524,21 @@
         select.appendChild(option);
       }
       const selectionExists = whisperOverview.models.some((model) => model.id === previousSelection);
-      select.value = selectionExists ? previousSelection : 'base.en';
+      select.value = selectionExists ? previousSelection : (whisperOverview.models[0]?.id || '');
       if (!settings.localWhisper) settings.localWhisper = {};
       settings.localWhisper.modelId = select.value;
-      status.textContent = whisperOverview.runtime.available
+      status.textContent = runtime.available
         ? 'Model files are verified before they can be loaded.'
-        : whisperOverview.runtime.message;
+        : (runtime.message || 'Local transcription is unavailable in this environment.');
       renderWhisperModelState();
     } catch (error) {
       status.textContent = `Could not load local model information: ${error.message}`;
+      const runtimeBadge = $('#whisper-runtime-status');
+      if (runtimeBadge) {
+        runtimeBadge.classList.add('error');
+        runtimeBadge.classList.remove('ready');
+        runtimeBadge.textContent = 'Unavailable';
+      }
     }
   }
 
@@ -1587,9 +1661,9 @@
     }
   }
 
-  // ---- example conversation (matches the reference screenshot) ------------
+  // ---- demo conversation (preview only; boot uses empty state) ------------
   function showExample() {
-    clearMessages();
+    hideEmptyState();
     const pill = document.createElement('div');
     pill.className = 'category-pill';
     pill.textContent = 'Behavioral';
@@ -1698,19 +1772,23 @@
   const obScrim = $('#onboard-scrim');
   const permissionHelp = isWindows
     ? 'cue needs permission to see and hear. Open Windows Privacy & security settings, allow <strong>Microphone</strong> and <strong>Screen recording</strong> for cue, then come back here.'
-    : 'cue needs two macOS permissions. Click each button, turn <strong>cue</strong> ON in the window that opens, then come back here.';
+    : isMac
+      ? 'cue needs two macOS permissions. Click each button, turn <strong>cue</strong> ON in the window that opens, then come back here.'
+      : 'cue needs microphone and screen-capture access. Allow them when your desktop prompts you, then come back here.';
   const permissionButtons = isWindows
     ? [
         { label: 'Open Microphone settings', action: () => cue.openPane('ms-settings:privacy-microphone') },
         { label: 'Open Screen recording settings', action: () => cue.openPane('ms-settings:privacy-screenrecorder') }
       ]
-    : [
-        { label: 'Open Microphone settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone') },
-        { label: 'Open Screen Recording settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture') }
-      ];
-  const assistShortcut = isWindows ? '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>' : '<span class="kbd">⌘</span> <span class="kbd">↵</span>';
-  const solveShortcut = isWindows ? '<span class="kbd">Ctrl</span> <span class="kbd">H</span>' : '<span class="kbd">⌘</span> <span class="kbd">H</span>';
-  const quitShortcut = isWindows ? '<span class="kbd">Ctrl</span><span class="kbd">⇧</span><span class="kbd">X</span>' : '<span class="kbd">⌘</span><span class="kbd">⇧</span><span class="kbd">X</span>';
+    : isMac
+      ? [
+          { label: 'Open Microphone settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone') },
+          { label: 'Open Screen Recording settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture') }
+        ]
+      : [];
+  const assistShortcut = isWindows ? '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>' : (isMac ? '<span class="kbd">⌘</span> <span class="kbd">↵</span>' : '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>');
+  const solveShortcut = isWindows ? '<span class="kbd">Ctrl</span> <span class="kbd">H</span>' : (isMac ? '<span class="kbd">⌘</span> <span class="kbd">H</span>' : '<span class="kbd">Ctrl</span> <span class="kbd">H</span>');
+  const quitShortcut = isWindows ? '<span class="kbd">Ctrl</span><span class="kbd">⇧</span><span class="kbd">X</span>' : (isMac ? '<span class="kbd">⌘</span><span class="kbd">⇧</span><span class="kbd">X</span>' : '<span class="kbd">Ctrl</span><span class="kbd">⇧</span><span class="kbd">X</span>');
   const OB_STEPS = [
     {
       icon: 'logo',
@@ -1791,20 +1869,22 @@
     }
 
     smartBtn.classList.toggle('on', !!settings.smart);
-    showExample();
+    showEmptyState();
     syncPlaceholder();
-    updateHistoryBadge(); // FIX #3: Initialize badge on boot
-    updateSendButtonState(); // Initialize send button state
+    updateHistoryBadge();
+    updateSendButtonState();
 
-    // Fix placeholder shortcut hint to match platform
-    if (isWindows) {
-      placeholder.innerHTML = 'Ask about your screen or conversation, or <span class="keycap">Ctrl</span><span class="keycap">⏎</span> for Assist';
-    }
+    // Platform-correct Assist hint (avoid ⌘ flash on Windows/Linux)
+    const assistKeys = isWindows || !isMac
+      ? '<span class="keycap">Ctrl</span><span class="keycap">⏎</span>'
+      : '<span class="keycap">⌘</span><span class="keycap">⏎</span>';
+    placeholder.innerHTML = 'Ask about your screen or conversation, or ' + assistKeys + ' for Assist';
 
     const st = await cue.captureState();
     $('#live-dot').classList.toggle('off', !st.active);
     $('#stop-btn').classList.toggle('active', st.active);
     setListenIcon(!!st.active);
+    updateSttStatus({ active: !!st.active, streaming: false });
     if (!settings.onboarded) showOnboard();
   })();
 })();

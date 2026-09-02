@@ -81,8 +81,12 @@
     },
     whisperModels: async function () {
       return {
-        runtimeReady: false,
-        runtimeError: 'Web runner — local whisper needs Electron',
+        runtime: {
+          available: false,
+          version: '',
+          target: 'web',
+          message: 'Web runner — local Whisper needs the Electron app.'
+        },
         models: [],
         selectedModelId: 'base.en',
         language: 'auto',
@@ -99,11 +103,11 @@
     ask: function (payload) { demoAsk(payload); },
     captureToggle: async function () {
       capturing = !capturing;
-      emit('capture:state', { active: capturing });
-      emit('stt:status', { status: capturing ? 'streaming' : 'disconnected', label: capturing ? 'live' : 'off' });
+      emit('capture:state', { active: capturing, streaming: capturing });
+      emit('stt:status', { status: capturing ? 'connected' : 'disconnected', label: capturing ? 'live' : 'off' });
       return capturing;
     },
-    captureState: async function () { return { active: capturing }; },
+    captureState: async function () { return { active: capturing, streaming: capturing }; },
     micPcm: function () {},
     systemPcm: function () {},
     setIgnoreMouse: function () {},
