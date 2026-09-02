@@ -527,6 +527,7 @@
         winBuild: isWin ? 22621 : 0,
         winSupportsContentProtection: false,
         isElectron: false,
+        version: 'web',
         captureProtection: {
           level: 'unsupported',
           applied: false,
@@ -540,6 +541,11 @@
         }
       };
     },
+    updateInfo: async function () {
+      return { phase: 'idle', version: 'web', packaged: false, message: 'Auto-update is only available in the installed desktop app.' };
+    },
+    updateCheck: async function () { return { ok: false, reason: 'web' }; },
+    updateInstall: async function () { return { ok: false, reason: 'web' }; },
     ask: function (payload) { streamAsk(payload); },
     captureToggle: async function (opts) {
       opts = opts || {};

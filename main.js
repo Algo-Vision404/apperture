@@ -24,6 +24,7 @@ const { WhisperModelManager } = require('./src/whisper-model-manager');
 const { requireWhisperModel } = require('./src/whisper-model-catalog');
 const { locateWhisperRuntime } = require('./src/whisper-runtime');
 const { buildCaptureProtectionStatus, applyCaptureProtection, wireCaptureProtectionLifecycle, getWindowsBuild } = require('./src/capture-protection');
+const { createAutoUpdate } = require('./src/auto-update');
 
 let win = null;
 // Which global shortcuts apperture actually holds. `globalShortcut.register` returns
@@ -62,6 +63,7 @@ let localWhisperTranscriber = null;
 let activeWhisperModelId = null;
 let desiredCaptureState = false;
 let captureTransition = Promise.resolve(false);
+let autoUpdate = null;
 
 // -------- streaming STT state --------
 let streamingSTT = { you: null, them: null }; // streaming STT instances per channel
@@ -606,9 +608,13 @@ ipcMain.handle('platform:info', () => {
     winBuild: WIN_BUILD,
     winSupportsContentProtection: WIN_SUPPORTS_CONTENT_PROTECTION,
     captureProtection,
-    isElectron: true
+    isElectron: true,
+    version: app.getVersion()
   };
 });
+ipcMain.handle('update:info', () => (autoUpdate ? autoUpdate.getState() : { phase: 'idle', version: app.getVersion(), packaged: app.isPackaged }));
+ipcMain.handle('update:check', () => (autoUpdate ? autoUpdate.check() : { ok: false, reason: 'unavailable' }));
+ipcMain.handle('update:install', () => (autoUpdate ? autoUpdate.install() : { ok: false, reason: 'unavailable' }));
 ipcMain.handle('transcript:clear', () => {
   transcript.splice(0, transcript.length);
   return { ok: true };
@@ -835,6 +841,8 @@ function launchApp() {
 
   createWindow();
   registerShortcuts();
+  if (!autoUpdate) autoUpdate = createAutoUpdate(send);
+  autoUpdate.start();
 }
 
 // -------- lifecycle --------

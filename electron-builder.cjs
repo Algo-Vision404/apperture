@@ -30,7 +30,13 @@ module.exports = {
   appId: "com.apperture.overlay",
   productName: "apperture",
   asar: false,
-  publish: null,
+  // Baked into app-update.yml so installed apps know where to check. Builds do
+  // not upload to GitHub unless you pass electron-builder --publish (never in dist:*).
+  publish: {
+    provider: "github",
+    owner: "Algo-Vision404",
+    repo: "apperture"
+  },
   artifactName: "${productName}-${version}-${os}-${arch}.${ext}",
   // An allowlist, so anything new has to be added here or it simply is not in
   // the shipped app — and the only symptom is a require() that throws at
@@ -72,6 +78,7 @@ module.exports = {
     perMachine: false,
     allowToChangeInstallationDirectory: true,
     shortcutName: "apperture",
+    differentialPackage: true
   },
   linux: {
     target: [{ target: "AppImage", arch: ["x64", "arm64"] }],

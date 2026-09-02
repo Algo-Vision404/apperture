@@ -35,9 +35,11 @@ test('mac config never auto-publishes and only claims hardened runtime / notariz
     delete process.env.APPLE_TEAM_ID;
     const unsigned = require('../electron-builder.cjs');
 
-    // publish:null is what stops electron-builder auto-publishing an
-    // ad-hoc build over a real release asset just because GH_TOKEN is set.
-    assert.equal(unsigned.publish, null);
+    // publish metadata is embedded for electron-updater; uploads only happen
+    // when electron-builder is invoked with --publish (never in dist:* scripts).
+    assert.equal(unsigned.publish.provider, 'github');
+    assert.equal(unsigned.publish.owner, 'Algo-Vision404');
+    assert.equal(unsigned.publish.repo, 'apperture');
     // No cert -> must not claim hardened runtime or notarization (would
     // otherwise fail the build outright, or worse, silently no-op).
     assert.equal(unsigned.mac.identity, null);
@@ -51,7 +53,7 @@ test('mac config never auto-publishes and only claims hardened runtime / notariz
     process.env.APPLE_TEAM_ID = 'TEAMID1234';
     const signed = require('../electron-builder.cjs');
 
-    assert.equal(signed.publish, null);
+    assert.equal(signed.publish.provider, 'github');
     assert.equal(signed.mac.identity, undefined); // let electron-builder discover the keychain identity
     assert.equal(signed.mac.hardenedRuntime, true);
     assert.equal(signed.mac.notarize, true);

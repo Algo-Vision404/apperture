@@ -28,6 +28,12 @@
       <button type="button" id="web-notice-dismiss" class="web-notice-dismiss" aria-label="Dismiss">×</button>
     </div>
 
+    <div id="update-banner" class="update-banner hidden" role="status">
+      <span id="update-banner-text" class="update-banner-text"></span>
+      <button type="button" id="update-banner-action" class="update-banner-action hidden"></button>
+      <button type="button" id="update-banner-dismiss" class="update-banner-dismiss" aria-label="Dismiss">×</button>
+    </div>
+
     <!-- Main assistant panel -->
     <div id="panel-wrap">
       <span id="live-dot" class="off"></span>
@@ -144,6 +150,7 @@
         <button class="s-tab" data-tab="profile"><span class="s-tab-ic" data-icon="user"></span><span>Profile</span></button>
         <button class="s-tab" data-tab="prep"><span class="s-tab-ic" data-icon="list"></span><span>Prep</span></button>
         <button class="s-tab" data-tab="style"><span class="s-tab-ic" data-icon="shield"></span><span>Stealth</span></button>
+        <button class="s-tab" data-tab="about"><span class="s-tab-ic" data-icon="refresh-cw"></span><span>Updates</span></button>
         <button class="s-tab" data-tab="qa"><span class="s-tab-ic" data-icon="message-circle"></span><span>Q&amp;A</span></button>
       </div>
 
@@ -311,6 +318,26 @@
 
         <label class="s-label">Work style &amp; values <span class="s-hint">used for culture fit and situational questions</span></label>
         <textarea id="work-style" rows="3" spellcheck="false" placeholder="e.g. I prefer data-driven decisions, work well with autonomy, value direct feedback, thrive in fast-paced environments..."></textarea>
+      </div>
+
+      <!-- Tab: Updates -->
+      <div class="s-body s-tab-pane hidden" data-pane="about">
+        <div class="update-card">
+          <div class="update-card-head">
+            <div>
+              <div class="s-label" style="margin-top:0">Desktop app</div>
+              <div class="update-version">Installed version <strong id="update-current-version">—</strong></div>
+            </div>
+            <button type="button" class="s-action" id="update-check-btn">Check for updates</button>
+          </div>
+          <p id="update-status-text" class="s-note">Installed builds check GitHub for new releases automatically.</p>
+          <div id="update-progress-wrap" class="update-progress-wrap hidden">
+            <progress id="update-progress" max="100" value="0"></progress>
+            <span id="update-progress-label">0%</span>
+          </div>
+          <button type="button" class="s-action update-install-btn hidden" id="update-install-btn">Restart to update</button>
+        </div>
+        <div class="s-note">When you push a new version to GitHub, the installed app downloads it in the background and asks to restart. No need to reinstall the .exe manually.</div>
       </div>
 
       <!-- Tab: Q&A -->

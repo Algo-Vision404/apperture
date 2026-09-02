@@ -1783,6 +1783,103 @@
     }
   }
 
+  let updateUiState = { phase: 'idle', version: '', availableVersion: null, percent: 0, message: '' };
+  let updateBannerDismissedVersion = null;
+
+  function renderUpdateUi() {
+    const statusText = document.getElementById('update-status-text');
+    const currentVersion = document.getElementById('update-current-version');
+    const progressWrap = document.getElementById('update-progress-wrap');
+    const progress = document.getElementById('update-progress');
+    const progressLabel = document.getElementById('update-progress-label');
+    const installBtn = document.getElementById('update-install-btn');
+    const checkBtn = document.getElementById('update-check-btn');
+    const banner = document.getElementById('update-banner');
+    const bannerText = document.getElementById('update-banner-text');
+    const bannerAction = document.getElementById('update-banner-action');
+
+    if (currentVersion) currentVersion.textContent = updateUiState.version || '—';
+    if (statusText) statusText.textContent = updateUiState.message || 'Installed builds check GitHub for new releases automatically.';
+    if (progressWrap) progressWrap.classList.toggle('hidden', updateUiState.phase !== 'downloading');
+    if (progress) progress.value = updateUiState.percent || 0;
+    if (progressLabel) progressLabel.textContent = `${updateUiState.percent || 0}%`;
+    if (installBtn) installBtn.classList.toggle('hidden', updateUiState.phase !== 'ready');
+    if (checkBtn) checkBtn.disabled = updateUiState.phase === 'checking' || updateUiState.phase === 'downloading';
+
+    if (!banner || !bannerText || apperture.isWeb) return;
+    const showBanner = (updateUiState.phase === 'available' || updateUiState.phase === 'downloading' || updateUiState.phase === 'ready')
+      && updateUiState.availableVersion
+      && updateBannerDismissedVersion !== updateUiState.availableVersion;
+    banner.classList.toggle('hidden', !showBanner);
+    if (!showBanner) return;
+
+    if (updateUiState.phase === 'ready') {
+      bannerText.textContent = `Update ${updateUiState.availableVersion} is ready.`;
+      if (bannerAction) {
+        bannerAction.textContent = 'Restart now';
+        bannerAction.classList.remove('hidden');
+      }
+    } else if (updateUiState.phase === 'downloading') {
+      bannerText.textContent = `Downloading ${updateUiState.availableVersion}… ${updateUiState.percent || 0}%`;
+      if (bannerAction) bannerAction.classList.add('hidden');
+    } else {
+      bannerText.textContent = `Update ${updateUiState.availableVersion} found — downloading in background.`;
+      if (bannerAction) bannerAction.classList.add('hidden');
+    }
+  }
+
+  async function refreshUpdateInfo() {
+    if (!apperture.updateInfo) return;
+    try {
+      updateUiState = await apperture.updateInfo();
+      renderUpdateUi();
+    } catch (_) {}
+  }
+
+  function initAutoUpdateUi() {
+    if (apperture.isWeb || !apperture.updateInfo) return;
+
+    const checkBtn = document.getElementById('update-check-btn');
+    const installBtn = document.getElementById('update-install-btn');
+    const bannerAction = document.getElementById('update-banner-action');
+    const bannerDismiss = document.getElementById('update-banner-dismiss');
+
+    if (checkBtn && !checkBtn.dataset.wired) {
+      checkBtn.dataset.wired = '1';
+      checkBtn.addEventListener('click', async () => {
+        updateUiState.message = 'Checking for updates…';
+        renderUpdateUi();
+        await apperture.updateCheck();
+        await refreshUpdateInfo();
+      });
+    }
+    if (installBtn && !installBtn.dataset.wired) {
+      installBtn.dataset.wired = '1';
+      installBtn.addEventListener('click', () => { void apperture.updateInstall(); });
+    }
+    if (bannerAction && !bannerAction.dataset.wired) {
+      bannerAction.dataset.wired = '1';
+      bannerAction.addEventListener('click', () => { void apperture.updateInstall(); });
+    }
+    if (bannerDismiss && !bannerDismiss.dataset.wired) {
+      bannerDismiss.dataset.wired = '1';
+      bannerDismiss.addEventListener('click', () => {
+        updateBannerDismissedVersion = updateUiState.availableVersion;
+        renderUpdateUi();
+      });
+    }
+
+    apperture.on('update:status', (payload) => {
+      updateUiState = { ...updateUiState, ...(payload || {}) };
+      renderUpdateUi();
+      if (payload && payload.phase === 'ready') {
+        showToast(`Update ${payload.availableVersion || ''} ready — restart to install`, 5000);
+      }
+    });
+
+    void refreshUpdateInfo();
+  }
+
   function initKeysAdvancedToggle() {
     const toggle = document.getElementById('keys-advanced-toggle');
     const panel = document.getElementById('keys-advanced');
@@ -2387,7 +2484,7 @@
   document.addEventListener('mousemove', (e) => {
     if (isDragging) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const overUI = !!(el && el.closest && el.closest('#toolbar, #web-notice, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim'));
+    const overUI = !!(el && el.closest && el.closest('#toolbar, #web-notice, #update-banner, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim'));
     setIgnore(!overUI);
   });
   setIgnore(true); // start fully click-through; hovering the panel re-enables it
@@ -2646,6 +2743,7 @@
     updateCaptureProtectionUi(platformInfo);
     syncStealthUi();
     initWebNotice();
+    initAutoUpdateUi();
 
     // R4: shortcut hints
     const sayHintEl = document.getElementById('say-shortcut-hint');
