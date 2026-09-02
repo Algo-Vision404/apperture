@@ -303,7 +303,7 @@ function openrouterSettings(overrides) {
   }, overrides || {});
 }
 
-test('routes OpenRouter through openrouter.ai with ranking headers and reasoning', async () => {
+test('routes OpenRouter through openrouter.ai with free-router fallbacks', async () => {
   const llm = createLLM(openrouterSettings());
   assert.equal(llm.ready, true);
   assert.equal(llm.model, OPENROUTER_DEFAULT_MODEL);
@@ -316,6 +316,31 @@ test('routes OpenRouter through openrouter.ai with ranking headers and reasoning
   assert.equal(capturedClientOptions.defaultHeaders['HTTP-Referer'], 'https://github.com/Blueturboguy07/cue');
   assert.equal(capturedCompletionRequest.model, OPENROUTER_DEFAULT_MODEL);
   assert.equal(capturedCompletionRequest.stream, true);
+  assert.ok(Array.isArray(capturedCompletionRequest.models));
+  assert.ok(capturedCompletionRequest.models.includes('google/gemma-4-31b-it:free'));
+  assert.equal(capturedCompletionRequest.reasoning, undefined);
+});
+
+test('OpenRouter migrates legacy Nvidia Ultra free default and enables reasoning for Nemotron', async () => {
+  const llm = createLLM(openrouterSettings({
+    models: {
+      openrouter: {
+        fast: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+        smart: 'nvidia/nemotron-3-ultra-550b-a55b:free'
+      }
+    }
+  }));
+  assert.equal(llm.model, OPENROUTER_DEFAULT_MODEL);
+
+  const nemo = createLLM(openrouterSettings({
+    models: {
+      openrouter: {
+        fast: 'nvidia/nemotron-3-super-120b-a12b:free',
+        smart: 'nvidia/nemotron-3-super-120b-a12b:free'
+      }
+    }
+  }));
+  await nemo.stream({ system: '', turns: [], onToken: () => {} });
   assert.deepEqual(capturedCompletionRequest.reasoning, { effort: 'medium' });
 });
 
@@ -344,4 +369,15 @@ test('OpenRouter reports a clear error when no key is configured', () => {
     if (prev === undefined) delete process.env.OPENROUTER_API_KEY;
     else process.env.OPENROUTER_API_KEY = prev;
   }
+});
+
+test('formats Nvidia overload errors into an actionable OpenRouter message', () => {
+  const { formatProviderErrorMessage } = require('../src/llm');
+  const msg = formatProviderErrorMessage(
+    new Error('Upstream error from Nvidia: Service temporarily overloaded'),
+    'openrouter',
+    'nvidia/nemotron-3-ultra-550b-a55b:free'
+  );
+  assert.match(msg, /temporarily overloaded/i);
+  assert.match(msg, /fallbacks|another free model/i);
 });

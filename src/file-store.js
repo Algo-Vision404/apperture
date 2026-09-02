@@ -4,7 +4,7 @@ const path = require('path');
 const { normalizeBaseUrl } = require('./openai-compatible');
 
 const MAX_AI_RULES_CHARS = 2000;
-const OPENROUTER_DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+const OPENROUTER_DEFAULT_MODEL = 'openrouter/free';
 const DATA_PATH = process.env.CUE_DATA_PATH
   || path.join(process.env.HOME || '/tmp', '.cue-web', 'cue-data.json');
 

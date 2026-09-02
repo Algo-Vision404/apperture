@@ -6,11 +6,22 @@ const { createCompatibleClientOptions } = require('./openai-compatible');
 const CUSTOM_PROVIDER = 'custom';
 const OPENROUTER_PROVIDER = 'openrouter';
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const OPENROUTER_DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+// openrouter/free auto-picks a healthy free model; Nvidia Ultra often returns
+// "Service temporarily overloaded" during peak free-tier demand.
+const OPENROUTER_DEFAULT_MODEL = 'openrouter/free';
+const OPENROUTER_FALLBACK_MODELS = [
+  'google/gemma-4-31b-it:free',
+  'minimax/minimax-m2.7:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free'
+];
 const OPENROUTER_HEADERS = {
   'HTTP-Referer': 'https://github.com/Blueturboguy07/cue',
   'X-Title': 'cue'
 };
+// Older cue builds defaulted to Nvidia Ultra free, which is frequently at
+// capacity. Migrate that sticky setting to the free router on read.
+const LEGACY_OPENROUTER_MODEL_RE = /^nvidia\/nemotron-3-ultra-550b-a55b:free$/i;
 // gemini-2.0-flash was Google's default here until it was deprecated (Feb 2026)
 // and fully retired (Mar 3 2026) — every request against it now 404s with a
 // generic "exception parsing response" body. gemini-2.5-flash is the model
@@ -95,9 +106,18 @@ function formatRetryWait(seconds) {
   return `${minutes} minute${minutes === 1 ? '' : 's'}`;
 }
 
+function isUpstreamOverloadError(error) {
+  const rawMessage = (error && (error.message || String(error))) || '';
+  return /temporarily overloaded|service unavailable|provider.*unavailable|upstream.*overloaded|no healthy.*provider|all providers.*failed|capacity/i.test(rawMessage);
+}
+
 function formatProviderErrorMessage(error, provider, model) {
   const label = normalizeProviderName(provider);
   const rawMessage = (error && (error.message || String(error))) || '';
+
+  if (isUpstreamOverloadError(error)) {
+    return `${label} is temporarily overloaded upstream${model ? ` for "${model}"` : ''}. Wait a moment and try again, or pick another free model in Settings (cue retries fallbacks automatically).`;
+  }
 
   if (isQuotaError(error)) {
     const retrySeconds = extractRetryDelaySeconds(rawMessage);
@@ -337,6 +357,9 @@ function createLLM(settings) {
   if (provider === 'gemini' && DEAD_GEMINI_MODEL_RE.test(model || '')) {
     model = CURRENT_GEMINI_DEFAULT;
   }
+  if (provider === OPENROUTER_PROVIDER && LEGACY_OPENROUTER_MODEL_RE.test(model || '')) {
+    model = OPENROUTER_DEFAULT_MODEL;
+  }
   if (!model) model = DEFAULT_MODELS[provider] || '';
   const minimaxRegion = settings.minimaxRegion || 'global_en';
   const endpoint = settings.azureEndpoint || '';
@@ -378,17 +401,17 @@ function createLLM(settings) {
         if (provider === 'openai') return await streamOpenAI(args);
         if (provider === CUSTOM_PROVIDER) return await streamOpenAI(args);
         if (provider === OPENROUTER_PROVIDER) {
+          const fallbacks = OPENROUTER_FALLBACK_MODELS.filter((id) => id !== model);
+          const extraBody = { models: fallbacks };
+          // Reasoning only on models that advertise it — free-router fallbacks often do not.
+          if (/nemotron|reasoning/i.test(model)) {
+            extraBody.reasoning = { effort: settings.smart ? 'high' : 'medium' };
+          }
           return await streamOpenAI({
             ...args,
             baseURL: OPENROUTER_BASE_URL,
             defaultHeaders: OPENROUTER_HEADERS,
-            // Enable thinking tokens on reasoning-capable OpenRouter models (e.g. Nemotron).
-            // Final answer still streams via delta.content; reasoning stays server-side unless excluded.
-            extraBody: {
-              reasoning: {
-                effort: settings.smart ? 'high' : 'medium'
-              }
-            }
+            extraBody
           });
         }
         if (provider === 'ollama') return await streamOllama(args);
@@ -409,8 +432,10 @@ module.exports = {
   createLLM,
   formatProviderErrorMessage,
   isQuotaError,
+  isUpstreamOverloadError,
   CURRENT_GEMINI_DEFAULT,
   OPENROUTER_BASE_URL,
   OPENROUTER_DEFAULT_MODEL,
+  OPENROUTER_FALLBACK_MODELS,
   resolveApiKey
 };

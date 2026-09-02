@@ -55,8 +55,8 @@ const DEFAULTS = {
     minimax: { fast: 'MiniMax-M2.7', smart: 'MiniMax-M3' },
     azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     openrouter: {
-      fast: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-      smart: 'nvidia/nemotron-3-ultra-550b-a55b:free'
+      fast: 'openrouter/free',
+      smart: 'openrouter/free'
     }
   }
 };

@@ -80,7 +80,7 @@ That's the whole setup on Windows. There's no permission dance — grant the mic
 npm run web
 ```
 
-Opens the real cue UI at `http://127.0.0.1:43142/` with a **live** backend: Assist/Say/Follow-up/Recap stream from your real provider (default **OpenRouter** + `nvidia/nemotron-3-ultra-550b-a55b:free`). Set `OPENROUTER_API_KEY` or paste a key in Settings. Listening uses the browser’s live Speech Recognition API for mic captions. Overlay click-through, global shortcuts, and local whisper.cpp still need `npm start` (Electron).
+Opens the real cue UI at `http://127.0.0.1:43142/` with a **live** backend: Assist/Say/Follow-up/Recap stream from your real provider (default **OpenRouter** + `openrouter/free`, with automatic free-model fallbacks). Set `OPENROUTER_API_KEY` or paste a key in Settings. Listening uses the browser’s live Speech Recognition API for mic captions. Overlay click-through, global shortcuts, and local whisper.cpp still need `npm start` (Electron).
 
 To build a standalone app:
 ```bash
@@ -130,7 +130,7 @@ cue uses **your own** API key, so it's free to run (you only pay your AI provide
 | **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | One key does everything — **but** for the *listening* features the key must have **Whisper / audio** access (a "restricted" project key that only allows chat will give a 403 on transcription). |
 | **Anthropic (Claude)** | [console.anthropic.com](https://console.anthropic.com) | Great for screen & coding help. Claude has no speech-to-text, so add an OpenAI or Gemini key too if you want the listening features. |
 | **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | One key does chat + transcription. |
-| **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | OpenAI-compatible gateway. Default model: `nvidia/nemotron-3-ultra-550b-a55b:free`. Paste a key in Settings **or** set `OPENROUTER_API_KEY` in the environment. Reasoning-capable models send a `reasoning` effort with each stream. |
+| **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | OpenAI-compatible gateway. Default model: `openrouter/free` (auto-routes among free models). If a free endpoint is overloaded, cue retries fallbacks (`gemma-4`, `minimax-m2.7`, Nemotron, …). Paste a key in Settings **or** set `OPENROUTER_API_KEY`. |
 | **Azure AI Foundry** | [ai.azure.com](https://ai.azure.com) | Paste your **endpoint** plus your key in Settings. **Azure OpenAI:** `https://&lt;resource&gt;.openai.azure.com/openai` — **AI Foundry:** `https://&lt;host&gt;.cognitiveservices.azure.com` (cue appends `/openai/v1` itself). The **model** fields are your deployment names. No speech-to-text — add an OpenAI or Gemini key for listening. |
 | **Custom** | Your endpoint or gateway | Any OpenAI-compatible Chat Completions endpoint. The API key is optional for unauthenticated local servers. |
 
