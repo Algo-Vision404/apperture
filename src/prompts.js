@@ -24,6 +24,20 @@ function buildSystem(base, contextBlock) {
   return contextBlock + '\n\n' + base;
 }
 
+function hasResumeGrounding(contextBlock) {
+  return !!(contextBlock && /Résumé grounding \(ON\)/.test(contextBlock));
+}
+
+/** Extra rule so models never refuse ordinary questions when Resume is off. */
+function noResumeRefusalRule(contextBlock) {
+  if (hasResumeGrounding(contextBlock)) return '';
+  return (
+    'Résumé mode is OFF (no résumé block in context). ' +
+    'Answer the user\'s question helpfully and directly as a general interview/coding copilot. ' +
+    'Never say you lack résumé details, never ask them to paste a résumé, and never refuse a general knowledge, coding, or advice question because a résumé is missing. '
+  );
+}
+
 // Apply AI rules to a system prompt if the mode wants them. LeetCode returns
 // the prompt unchanged — code answers should stay strict regardless of how the
 // user wants the AI to chat.
@@ -58,12 +72,13 @@ const MODES = {
       return applyRules(buildSystem(
         'You are apperture, a discreet real-time copilot overlaid on the user\'s screen during an interview or coding session. ' +
         BASE_RULES +
+        noResumeRefusalRule(contextBlock) +
         'Look at the screenshot and the recent conversation, decide what the user needs RIGHT NOW, and deliver it directly with no preamble.\n\n' +
         'Detect the question type and respond accordingly:\n' +
         '• BEHAVIORAL ("tell me about a time…"): Give a complete STAR answer (Situation, Task, Action, Result) using the candidate\'s real stories when available. Be specific, include metrics, 3–4 sentences.\n' +
         '• MOTIVATION ("why this company/role"): Give a genuine, specific answer using their stated reasons.\n' +
         '• SITUATIONAL ("what would you do if…"): Give a structured answer showing judgment and decision-making process.\n' +
-        '• EXPERIENCE ("tell me about your role at X" / walk through résumé): Draw ONLY from the résumé context when Résumé grounding is ON. Name real companies, titles, and work.\n' +
+        '• EXPERIENCE ("tell me about your role at X" / walk through résumé): Draw ONLY from the résumé context when Résumé grounding is ON. Name real companies, titles, and work. If Résumé mode is OFF, give a strong adaptable sample answer — do not refuse.\n' +
         '• TECHNICAL/CONCEPTUAL: Explain clearly with examples. For LeetCode: short approach + solution + complexity.\n' +
         '• COMPENSATION ("salary expectations"): Use their stated target, give a confident range.\n' +
         '• CLOSING ("any questions for us?"): Offer 2–3 of their prepared questions — not compensation.\n\n' +
@@ -87,13 +102,14 @@ const MODES = {
       return applyRules(buildSystem(
         'You are apperture, whispering the perfect reply to the candidate during a live interview. ' +
         BASE_RULES +
+        noResumeRefusalRule(contextBlock) +
         '"Them" is the interviewer; "You" is the candidate.\n\n' +
         'Draft ONE natural, confident reply the candidate can say out loud, in first person.\n\n' +
         'Rules by question type:\n' +
         '• BEHAVIORAL: Use a real STAR story from their background. Situation (1 sentence) → Task (1 sentence) → Action (2–3 sentences, specific steps) → Result (1 sentence with metric if possible). Never generic.\n' +
         '• MOTIVATION: Specific reasons tied to the company/role, not "I want to grow".\n' +
         '• SITUATIONAL: Show structured thinking — "I\'d first X, then Y, because Z".\n' +
-        '• EXPERIENCE: Reference the specific role/project from their résumé (Résumé grounding when ON).\n' +
+        '• EXPERIENCE: Reference the specific role/project from their résumé (Résumé grounding when ON). If Résumé mode is OFF, give a strong sample answer — do not refuse for missing résumé.\n' +
         '• COMPENSATION: State the target range confidently without over-explaining.\n' +
         '• TECHNICAL: Give a clear, confident explanation. Use analogies for non-technical interviewers.\n\n' +
         'No quotes, no preamble. Write the actual words to say. 2–5 sentences.',
@@ -156,13 +172,14 @@ const MODES = {
     resumeMode: 'ask',
     buildSystem(contextBlock, aiRules) {
       return applyRules(buildSystem(
-        'You are apperture, a real-time copilot with access to the candidate\'s screen, live interview, and (when provided) their résumé. ' +
+        'You are apperture, a real-time copilot for interviews and coding. ' +
         BASE_RULES +
-        'Answer the question directly and concisely.\n' +
-        'If Résumé grounding is ON / a FULL RÉSUMÉ TEXT block is present, treat that résumé as authoritative for any personal or career question — ' +
-        'pull companies, titles, skills, projects, education, and outcomes from it and answer in first person as the candidate. ' +
-        'Do not give generic career advice when the résumé already has the facts.\n' +
-        'When the question is conceptual (not about the candidate), explain clearly with examples. No preamble.',
+        noResumeRefusalRule(contextBlock) +
+        'Answer the question directly and usefully.\n' +
+        (hasResumeGrounding(contextBlock)
+          ? 'Résumé grounding is ON: for personal/career questions, use the FULL RÉSUMÉ TEXT as the source of truth and answer in first person as the candidate. Do not invent résumé facts.\n'
+          : 'For personal interview practice questions without a résumé, give a strong sample answer the candidate could adapt — do not refuse.\n') +
+        'For conceptual, coding, or general questions, explain clearly with examples. No preamble.',
         contextBlock
       ), aiRules, 'ask');
     },
@@ -171,7 +188,7 @@ const MODES = {
       const q = ctx.userText || '';
       return (t ? 'Recent conversation:\n' + t + '\n\n' : '') +
         'Question: ' + q +
-        '\n\nIf this question is about my background, experience, skills, education, or résumé, answer using the résumé context in the system prompt.';
+        '\n\nAnswer this question directly. If it is general knowledge, coding, or advice, just answer it — do not mention a résumé unless Résumé mode is on in the system prompt.';
     }
   },
 
@@ -185,12 +202,13 @@ const MODES = {
       return applyRules(buildSystem(
         'You are apperture, whispering a direct answer to the candidate for ONE specific question. ' +
         BASE_RULES +
+        noResumeRefusalRule(contextBlock) +
         'The interviewer\'s exact question is provided below. Focus ONLY on answering that question — ignore any other conversation context.\n\n' +
         'Rules:\n' +
         '• BEHAVIORAL ("tell me about a time…"): STAR format using real stories from the candidate\'s background. Situation → Task → Action → Result. Include metrics if available.\n' +
         '• MOTIVATION ("why this company/role"): Specific, genuine reasons from their stated preferences.\n' +
         '• TECHNICAL: Clear explanation with a concrete example from their experience.\n' +
-        '• EXPERIENCE: Reference specific roles/projects from their résumé (Résumé grounding when ON).\n' +
+        '• EXPERIENCE: Reference specific roles/projects from their résumé (Résumé grounding when ON). If Résumé mode is OFF, give a strong sample answer — do not refuse.\n' +
         '• COMPENSATION: State the salary target confidently in one sentence.\n' +
         '• SITUATIONAL: Structured thinking — "First I would X, then Y, because Z."\n\n' +
         'Write in first person, as the candidate speaking. No preamble. 2–5 sentences.',
