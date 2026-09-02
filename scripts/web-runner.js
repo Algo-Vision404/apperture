@@ -13,6 +13,9 @@ const store = require('../src/file-store');
 const { createLLM } = require('../src/llm');
 const { MODES } = require('../src/prompts');
 const { buildInterviewContext, detectCategory } = require('../src/interview-context');
+const { parseDocumentFile } = require('../src/resume');
+const os = require('os');
+const crypto = require('crypto');
 
 const PORT = Number(process.env.APPERTURE_WEB_PORT || 43142);
 const HOST = process.env.APPERTURE_WEB_HOST || '0.0.0.0';
@@ -128,7 +131,7 @@ async function handleAsk(req, res) {
     const userBubble = def.userBubble !== null
       ? def.userBubble
       : (mode === 'ask' ? userText : null);
-    const category = mode !== 'leetcode' ? detectCategory(transcript) : null;
+    const category = mode !== 'leetcode' ? detectCategory(transcript, userText) : null;
     writeSse(res, { type: 'start', userBubble, small: !!def.small, category });
 
     if (!llm.ready) {
@@ -138,7 +141,7 @@ async function handleAsk(req, res) {
       return;
     }
 
-    const contextBlock = buildInterviewContext(settings, mode, transcript);
+    const contextBlock = buildInterviewContext(settings, mode, transcript, userText);
     const system = def.buildSystem
       ? def.buildSystem(contextBlock, settings.aiRules || '')
       : (def.system || '');
@@ -189,6 +192,35 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, JSON.stringify(store.setSettings(patch)), MIME['.json']);
     } catch (e) {
       return send(res, 400, JSON.stringify({ error: e.message }), MIME['.json']);
+    }
+  }
+
+  if (rel === '/api/parse-document' && method === 'POST') {
+    let tmp = null;
+    try {
+      const body = await readJson(req);
+      const fileName = String(body.fileName || 'document.bin');
+      const ext = path.extname(fileName).toLowerCase();
+      if (!['.pdf', '.docx', '.txt', '.md'].includes(ext)) {
+        return send(res, 400, JSON.stringify({ error: 'Use a PDF, DOCX, or plain-text file.' }), MIME['.json']);
+      }
+      const b64 = String(body.base64 || '');
+      if (!b64) return send(res, 400, JSON.stringify({ error: 'Missing file data.' }), MIME['.json']);
+      const buf = Buffer.from(b64, 'base64');
+      if (buf.length > 8 * 1024 * 1024) {
+        return send(res, 400, JSON.stringify({ error: 'File too large (max 8 MB).' }), MIME['.json']);
+      }
+      tmp = path.join(os.tmpdir(), 'apperture-doc-' + crypto.randomBytes(8).toString('hex') + ext);
+      fs.writeFileSync(tmp, buf);
+      let text = '';
+      if (ext === '.txt' || ext === '.md') text = buf.toString('utf8').trim();
+      else text = await parseDocumentFile(tmp);
+      if (!text) return send(res, 400, JSON.stringify({ error: 'No text found in that file.' }), MIME['.json']);
+      return send(res, 200, JSON.stringify({ ok: true, text, fileName }), MIME['.json']);
+    } catch (e) {
+      return send(res, 400, JSON.stringify({ error: e && e.message ? e.message : String(e) }), MIME['.json']);
+    } finally {
+      if (tmp) try { fs.unlinkSync(tmp); } catch (_) {}
     }
   }
 

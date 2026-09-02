@@ -775,6 +775,17 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .smart-pill:hover { background: rgba(255,236,190,0.09); }
 .smart-pill.on { border-color: rgba(var(--accent-rgb), 0.48); color: var(--accent-ink); background: rgba(var(--accent-rgb), 0.12); }
 .smart-pill.on .ic { color: var(--accent-ink); }
+.resume-pill.on {
+  border-color: rgba(var(--live-rgb), 0.45);
+  color: #b7f0d4;
+  background: rgba(var(--live-rgb), 0.14);
+}
+.resume-pill.on .ic { color: #b7f0d4; }
+.resume-pill.needs-resume {
+  border-color: rgba(255,236,190,0.18);
+  color: var(--tx-mut);
+  opacity: 0.78;
+}
 /* History button */
 .history-btn {
   width: 28px; height: 28px; border-radius: var(--r-8);
@@ -1158,8 +1169,9 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   border-radius: 999px; border: 1px solid transparent;
   letter-spacing: 0.08em; text-transform: uppercase;
   font-family: var(--font);
-  transition: all 180ms var(--ease); cursor: default;
+  transition: all 180ms var(--ease); cursor: pointer;
   color: var(--tx-mut);
+  background: transparent;
 }
 .prep-item.loaded {
   color: var(--live);
@@ -1167,6 +1179,12 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   background: rgba(var(--live-rgb), 0.08);
 }
 .prep-item.missing { opacity: 0.5; }
+.prep-item.active {
+  color: var(--accent-ink);
+  border-color: rgba(var(--accent-rgb), 0.42);
+  background: rgba(var(--accent-rgb), 0.14);
+}
+.prep-item:hover { color: #fff; border-color: rgba(255,236,190,0.18); }
 
 /* ============================ Response history ============================ */
 .response-group { display: flex; flex-direction: column; }
@@ -1330,3 +1348,53 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   cursor: pointer;
 }
 .s-upload-btn:hover { background: rgba(var(--accent-rgb), 0.18); }
+.s-ghost-btn {
+  flex-shrink: 0; padding: 5px 9px; border-radius: var(--r-control);
+  border: 1px solid rgba(255,236,190,0.12);
+  background: transparent; color: var(--tx-mut);
+  font: 500 11px var(--font); cursor: pointer;
+}
+.s-ghost-btn:hover { color: #fca5a5; border-color: rgba(239,68,68,0.30); background: rgba(239,68,68,0.08); }
+
+.resume-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 12px 10px;
+  border: 1px solid rgba(255,236,190,0.12);
+  border-radius: 14px;
+  background:
+    linear-gradient(165deg, rgba(var(--accent-rgb), 0.08), transparent 48%),
+    rgba(255,255,255,0.03);
+}
+.resume-card-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.resume-card-hint {
+  margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--tx-mut); max-width: 34ch;
+}
+.resume-card #resume-text {
+  width: 100%; min-height: 160px; resize: vertical;
+  border: 1px solid rgba(255,236,190,0.12);
+  border-radius: 10px;
+  background: rgba(0,0,0,0.22);
+  color: var(--tx-1);
+  font: 400 13px/1.45 var(--font);
+  padding: 10px 11px;
+  outline: none;
+}
+.resume-card #resume-text:focus {
+  border-color: rgba(var(--accent-rgb), 0.42);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.10);
+}
+.resume-meta-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap;
+}
+#resume-meta { font-size: 11px; color: var(--tx-mut); }
+.resume-use-toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--tx-2); cursor: pointer; user-select: none;
+}
+.resume-use-toggle input {
+  accent-color: var(--live);
+  width: 14px; height: 14px;
+}

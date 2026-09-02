@@ -19,6 +19,8 @@
   document.querySelector('.act[data-mode="followup"] .ic').innerHTML = icon('message-circle', { size: 15 });
   document.querySelector('.act[data-mode="recap"] .ic').innerHTML = icon('refresh-cw', { size: 15 });
   $('#smart-toggle .ic').innerHTML = icon('zap', { size: 13 });
+  const resumeToggleIc = document.querySelector('#resume-toggle .ic');
+  if (resumeToggleIc) resumeToggleIc.innerHTML = icon('file-text', { size: 13 });
   $('#more-btn').innerHTML = icon('more-horizontal', { size: 16 });
   $('#send-btn').innerHTML = icon('send', { size: 14 });
   const clearIC = document.querySelector('#clear-transcript-btn .ic');
@@ -579,6 +581,68 @@
     smartBtn.classList.toggle('on', settings.smart);
     await apperture.settingsSet({ smart: settings.smart });
   });
+
+  // Resume grounding toggle — when on, answers pull facts from the saved résumé
+  const resumeBtn = document.getElementById('resume-toggle');
+  function hasResumeText(src) {
+    const s = src || settings;
+    return !!(s && s.resumeText && String(s.resumeText).trim());
+  }
+  function updateResumeToggleUi() {
+    if (!settings) return;
+    const on = settings.useResume !== false && hasResumeText();
+    if (resumeBtn) {
+      resumeBtn.classList.toggle('on', on);
+      resumeBtn.classList.toggle('needs-resume', !hasResumeText());
+      resumeBtn.title = !hasResumeText()
+        ? 'Add a résumé in Settings → Profile, then turn this on'
+        : (on
+          ? 'Résumé grounding ON — answers use your résumé. Click to turn off.'
+          : 'Résumé grounding OFF — click to answer from your résumé.');
+    }
+    const chk = document.getElementById('use-resume-settings');
+    if (chk) chk.checked = settings.useResume !== false;
+    updateResumeMeta();
+  }
+  function updateResumeMeta() {
+    const meta = document.getElementById('resume-meta');
+    if (!meta) return;
+    const text = ($('#resume-text') && $('#resume-text').value) || (settings && settings.resumeText) || '';
+    const trimmed = String(text).trim();
+    if (!trimmed) {
+      meta.textContent = 'No résumé loaded';
+      return;
+    }
+    const words = trimmed.split(/\s+/).filter(Boolean).length;
+    const chars = trimmed.length;
+    meta.textContent = words + ' words · ' + chars.toLocaleString() + ' characters ready';
+  }
+  async function setUseResume(next) {
+    if (!settings) return;
+    if (next && !hasResumeText()) {
+      openSettings();
+      const profileTab = document.querySelector('.s-tab[data-tab="profile"]');
+      if (profileTab) profileTab.click();
+      showStatus('Import or paste your résumé first, then turn Resume on.');
+      return;
+    }
+    settings.useResume = !!next;
+    updateResumeToggleUi();
+    updatePrepStatus();
+    await apperture.settingsSet({ useResume: settings.useResume });
+    showStatus(settings.useResume
+      ? 'Résumé grounding on — answers will cite your résumé.'
+      : 'Résumé grounding off.');
+  }
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+      if (!hasResumeText()) {
+        void setUseResume(true);
+        return;
+      }
+      void setUseResume(!(settings.useResume !== false));
+    });
+  }
 
   // Hide / collapse
   function toggleHide() {
@@ -1223,14 +1287,48 @@
       salary:  !!(settings.salaryTarget && settings.salaryTarget.trim())
     };
     document.querySelectorAll('#prep-status .prep-item').forEach((el) => {
-      const loaded = fields[el.dataset.field];
+      const field = el.dataset.field;
+      const loaded = fields[field];
       el.classList.toggle('loaded', loaded);
       el.classList.toggle('missing', !loaded);
-      el.title = loaded
-        ? el.textContent.trim() + ' loaded'
-        : el.textContent.trim() + ' not set — add in Settings';
+      const resumeActive = field === 'resume' && loaded && settings.useResume !== false;
+      el.classList.toggle('active', resumeActive);
+      if (field === 'resume') {
+        el.title = !loaded
+          ? 'No résumé — click to open Profile and import one'
+          : (resumeActive
+            ? 'Résumé grounding ON — click to turn off'
+            : 'Résumé loaded — click to ground answers in it');
+      } else {
+        el.title = loaded
+          ? el.textContent.trim() + ' loaded — open Settings to edit'
+          : el.textContent.trim() + ' not set — click to add in Settings';
+      }
     });
+    updateResumeToggleUi();
   }
+
+  function openSettingsTab(tabName) {
+    openSettings();
+    const tab = document.querySelector(`.s-tab[data-tab="${tabName}"]`);
+    if (tab && !tab.classList.contains('on')) tab.click();
+  }
+
+  document.querySelectorAll('#prep-status .prep-item').forEach((el) => {
+    el.addEventListener('click', () => {
+      const field = el.dataset.field;
+      if (field === 'resume') {
+        if (!hasResumeText()) {
+          openSettingsTab('profile');
+          return;
+        }
+        void setUseResume(!(settings.useResume !== false));
+        return;
+      }
+      const tab = field === 'jd' ? 'profile' : (field === 'stories' ? 'prep' : 'qa');
+      openSettingsTab(tab);
+    });
+  });
 
   function updateSmartTooltip() {
     if (!settings) return;
@@ -1334,6 +1432,13 @@
     // Profile tab
     $('#resume-text').value = settings.resumeText || '';
     $('#job-description').value = settings.jobDescription || '';
+    const useResumeChk = document.getElementById('use-resume-settings');
+    if (useResumeChk) useResumeChk.checked = settings.useResume !== false;
+    updateResumeMeta();
+    const resumeName = document.getElementById('resume-filename');
+    if (resumeName && !(resumeName.textContent || '').trim()) {
+      resumeName.textContent = settings.resumeText ? 'Pasted résumé' : 'No file imported yet';
+    }
     // Interview Prep tab
     $('#star-stories').value = settings.starStories || '';
     $('#why-company').value = settings.whyCompany || '';
@@ -1390,9 +1495,25 @@
     if (res.error) { showStatus('Resume import failed: ' + res.error); return; }
     $('#resume-text').value = res.text || '';
     const resumeName = document.getElementById('resume-filename');
-    if (resumeName) resumeName.textContent = res.fileName || '';
-    showStatus('Imported ' + res.fileName + ' — click Done to keep it.');
+    if (resumeName) resumeName.textContent = res.fileName || 'Imported résumé';
+    updateResumeMeta();
+    showStatus('Imported ' + (res.fileName || 'résumé') + ' — click Done to keep it.');
   });
+  const clearResumeBtn = document.getElementById('clear-resume-btn');
+  if (clearResumeBtn) clearResumeBtn.addEventListener('click', () => {
+    $('#resume-text').value = '';
+    const resumeName = document.getElementById('resume-filename');
+    if (resumeName) resumeName.textContent = 'No file imported yet';
+    updateResumeMeta();
+  });
+  const resumeTextEl = document.getElementById('resume-text');
+  if (resumeTextEl) resumeTextEl.addEventListener('input', updateResumeMeta);
+  const useResumeSettings = document.getElementById('use-resume-settings');
+  if (useResumeSettings) {
+    useResumeSettings.addEventListener('change', () => {
+      void setUseResume(!!useResumeSettings.checked);
+    });
+  }
   const uploadJdBtn = document.getElementById('upload-jd-btn');
   if (uploadJdBtn) uploadJdBtn.addEventListener('click', async () => {
     const res = await apperture.pickProfileDocument();
@@ -1639,6 +1760,9 @@
     // Profile
     settings.resumeText = $('#resume-text').value.trim();
     settings.jobDescription = $('#job-description').value.trim();
+    const useResumeChkSave = document.getElementById('use-resume-settings');
+    if (useResumeChkSave) settings.useResume = !!useResumeChkSave.checked;
+    else if (typeof settings.useResume !== 'boolean') settings.useResume = true;
     // Interview Prep
     settings.starStories = $('#star-stories').value.trim();
     settings.whyCompany = $('#why-company').value.trim();
@@ -1860,6 +1984,8 @@
     }
 
     smartBtn.classList.toggle('on', !!settings.smart);
+    if (typeof settings.useResume !== 'boolean') settings.useResume = true;
+    updateResumeToggleUi();
     showEmptyState();
     syncPlaceholder();
     updateHistoryBadge();

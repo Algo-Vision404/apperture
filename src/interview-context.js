@@ -84,18 +84,20 @@ const CATEGORY_PATTERNS = {
   ],
 };
 
-function detectCategory(transcript) {
-  if (!transcript || !transcript.length) return 'general';
-  // Look at the last 5 "Them" turns — the interviewer's recent questions
-  const recentThem = transcript
+function detectCategory(transcript, extraText) {
+  // Live interview: only the interviewer's ("Them") turns define the category.
+  // Ask-box text is optional extra haystack so typed résumé questions still classify.
+  const recentThem = (transcript || [])
     .filter(t => t.channel === 'them')
     .slice(-5)
     .map(t => t.text)
     .join(' ');
-  if (!recentThem) return 'general';
+  const ask = typeof extraText === 'string' ? extraText.trim() : '';
+  const haystack = [recentThem, ask].filter(Boolean).join('\n');
+  if (!haystack) return 'general';
 
   for (const [category, patterns] of Object.entries(CATEGORY_PATTERNS)) {
-    if (patterns.some(re => re.test(recentThem))) return category;
+    if (patterns.some(re => re.test(haystack))) return category;
   }
   return 'general';
 }
@@ -163,15 +165,16 @@ function buildJDBlock(jd, limit = 600) {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 /**
- * buildInterviewContext(settings, mode, transcript)
+ * buildInterviewContext(settings, mode, transcript, userText?)
  * Returns a system-prompt string with only the context fields relevant to
  * the detected interview category. Returns null for leetcode mode.
  */
-function buildInterviewContext(settings, mode, transcript) {
+function buildInterviewContext(settings, mode, transcript, userText) {
   // Coding problems never need personal context
   if (mode === 'leetcode') return null;
 
-  const category = detectCategory(transcript || []);
+  const category = detectCategory(transcript || [], userText);
+  const useResume = settings.useResume !== false;
 
   const resume    = settings.resumeText || '';
   const jd        = settings.jobDescription || '';
@@ -188,11 +191,22 @@ function buildInterviewContext(settings, mode, transcript) {
 
   const blocks = [];
 
-  // Always include resume if available (but size varies by category)
-  if (hasResume) {
-    const resumeLimit = (category === 'behavioral' || category === 'experience') ? 2400 : 1400;
+  // Résumé grounding — only when the Resume option is on and text is loaded
+  if (useResume && hasResume) {
+    const resumeLimit = (category === 'behavioral' || category === 'experience' || category === 'general')
+      ? 4200
+      : 1800;
     const rb = buildResumeBlock(resume, resumeLimit);
-    if (rb) blocks.push('=== Your Background ===\n' + rb);
+    if (rb) {
+      blocks.push(
+        '=== Résumé grounding (ON) ===\n' +
+        'Answer background, experience, skills, and “tell me about yourself” questions ' +
+        'directly from this résumé. Prefer concrete roles, companies, dates, projects, and metrics. ' +
+        'Do not invent employers, titles, dates, or achievements. ' +
+        'If a detail is not in the résumé, say the résumé does not include it.\n\n' +
+        rb
+      );
+    }
   }
 
   // Job description — always include when available

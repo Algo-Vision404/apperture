@@ -62,6 +62,7 @@
               </div>
               <div id="composer-bottom">
                 <button id="smart-toggle" class="smart-pill"><span class="ic"></span><span>Smart</span></button>
+                <button id="resume-toggle" class="smart-pill resume-pill" title="Ground answers in your résumé"><span class="ic"></span><span>Resume</span></button>
                 <button id="history-btn" class="history-btn" title="View conversation history"><span class="ic"></span></button>
                 <button id="more-btn" class="more-btn" title="Settings"></button>
                 <div class="spacer"></div>
@@ -70,10 +71,10 @@
             </div>
 
             <div id="prep-status" class="prep-status">
-              <span class="prep-item" data-field="resume">Resume</span>
-              <span class="prep-item" data-field="jd">Job</span>
-              <span class="prep-item" data-field="stories">Stories</span>
-              <span class="prep-item" data-field="salary">Salary</span>
+              <button type="button" class="prep-item" data-field="resume" id="prep-resume-btn">Resume</button>
+              <button type="button" class="prep-item" data-field="jd" id="prep-jd-btn">Job</button>
+              <button type="button" class="prep-item" data-field="stories" id="prep-stories-btn">Stories</button>
+              <button type="button" class="prep-item" data-field="salary" id="prep-salary-btn">Salary</button>
             </div>
           </div>
 
@@ -221,12 +222,30 @@
 
       <!-- Tab: Profile -->
       <div class="s-body s-tab-pane hidden" data-pane="profile">
-        <label class="s-label">Your resume <span class="s-hint">paste full resume, or import a PDF/DOCX</span></label>
-        <div class="s-field s-upload"><span class="s-filename" id="resume-filename"></span><button class="s-upload-btn" id="upload-resume-btn">Import PDF/DOCX</button></div>
-        <textarea id="resume-text" rows="7" spellcheck="false" placeholder="Paste your full resume here. apperture will extract Name, Summary, Experience, Skills, Projects, and Education automatically."></textarea>
+        <div class="resume-card">
+          <div class="resume-card-head">
+            <div>
+              <div class="s-label" style="margin-top:0">Your résumé</div>
+              <div class="resume-card-hint">Import a PDF/DOCX or paste text. Turn on <strong>Resume</strong> in the chat bar so answers quote roles, skills, and projects from this file.</div>
+            </div>
+            <button type="button" class="s-upload-btn" id="upload-resume-btn">Import PDF/DOCX</button>
+          </div>
+          <div class="s-field s-upload">
+            <span class="s-filename" id="resume-filename">No file imported yet</span>
+            <button type="button" class="s-ghost-btn" id="clear-resume-btn">Clear</button>
+          </div>
+          <textarea id="resume-text" rows="8" spellcheck="false" placeholder="Paste your full résumé here. apperture extracts Name, Summary, Experience, Skills, Projects, and Education for grounded answers."></textarea>
+          <div class="resume-meta-row">
+            <span id="resume-meta">No résumé loaded</span>
+            <label class="resume-use-toggle">
+              <input type="checkbox" id="use-resume-settings" checked />
+              <span>Use résumé for answers</span>
+            </label>
+          </div>
+        </div>
 
-        <label class="s-label">Target job description <span class="s-hint">optional — every answer gets tailored to this role</span></label>
-        <div class="s-field s-upload"><span class="s-filename" id="jd-filename"></span><button class="s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button></div>
+        <label class="s-label s-label-spaced">Target job description <span class="s-hint">optional — answers get tailored to this role</span></label>
+        <div class="s-field s-upload"><span class="s-filename" id="jd-filename">No file imported yet</span><button class="s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button></div>
         <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. apperture will highlight your most relevant experience."></textarea>
       </div>
 

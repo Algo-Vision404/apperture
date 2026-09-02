@@ -135,3 +135,26 @@ test('buildInterviewContext: JD tailor note included when JD is set', () => {
   assert.ok(ctx !== null);
   assert.ok(ctx.includes('Tailor'), 'should include tailor note when JD is set');
 });
+
+test('buildInterviewContext: useResume false skips résumé grounding', () => {
+  const ctx = buildInterviewContext({ ...fullSettings, useResume: false }, 'say',
+    [{ channel: 'them', text: 'Walk me through your resume.' }]);
+  assert.ok(ctx !== null);
+  assert.ok(!ctx.includes('Résumé grounding'), 'should not ground in résumé when off');
+  assert.ok(!ctx.includes('Python, Go'), 'should not inject résumé skills when off');
+});
+
+test('buildInterviewContext: useResume true answers from résumé', () => {
+  const ctx = buildInterviewContext({ ...fullSettings, useResume: true }, 'ask', [],
+    'Walk me through your resume and recent role.');
+  assert.ok(ctx !== null);
+  assert.ok(ctx.includes('Résumé grounding (ON)'));
+  assert.ok(ctx.includes('PayCo'));
+});
+
+test('detectCategory: ask-box text can classify experience questions', () => {
+  assert.equal(
+    detectCategory([], 'Walk me through your resume and tell me about your experience at PayCo.'),
+    'experience'
+  );
+});

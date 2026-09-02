@@ -27,6 +27,7 @@ const DEFAULTS = {
   azureEndpoint: '',
   resumeText: '',
   jobDescription: '',
+  useResume: true,
   starStories: '',
   whyCompany: '',
   whyLeaving: '',

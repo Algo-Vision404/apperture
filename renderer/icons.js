@@ -34,6 +34,12 @@
     // Smart — taut bolt
     zap: '<path d="M13.35 2.9 6.1 13.35h4.85L9.85 21.1 17.9 10.1h-4.9Z"/>',
 
+    // Resume — document with lines
+    'file-text':
+      '<path d="M13.6 3.4H7.4A1.9 1.9 0 0 0 5.5 5.3v13.4A1.9 1.9 0 0 0 7.4 20.6h9.2a1.9 1.9 0 0 0 1.9-1.9V8.55Z"/>' +
+      '<path d="M13.6 3.4v4.35h4.35"/>' +
+      '<path d="M8.6 12.1h6.7M8.6 15.2h4.8"/>',
+
     'chevron-down': '<path d="m6.8 9.2 5.2 5.2 5.2-5.2"/>',
     'chevron-up': '<path d="m6.8 14.8 5.2-5.2 5.2 5.2"/>',
 

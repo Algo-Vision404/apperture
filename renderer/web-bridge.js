@@ -260,7 +260,42 @@
     appLinkState: async function () { return { callers: [] }; },
     appLinkRevoke: async function () { return true; },
     appLinkConsentRespond: function () {},
-    pickProfileDocument: async function () { return { ok: false, error: 'File pick needs Electron' }; },
+    pickProfileDocument: async function () {
+      return new Promise(function (resolve) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.addEventListener('change', async function () {
+          const file = input.files && input.files[0];
+          input.remove();
+          if (!file) return resolve({ canceled: true });
+          try {
+            const buf = await file.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            let binary = '';
+            const chunk = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunk) {
+              binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+            }
+            const base64 = btoa(binary);
+            const parsed = await api('/api/parse-document', {
+              method: 'POST',
+              body: JSON.stringify({ fileName: file.name, base64: base64 })
+            });
+            resolve({ ok: true, text: parsed.text || '', fileName: parsed.fileName || file.name });
+          } catch (e) {
+            resolve({ error: e && e.message ? e.message : String(e) });
+          }
+        });
+        input.addEventListener('cancel', function () {
+          input.remove();
+          resolve({ canceled: true });
+        });
+        input.click();
+      });
+    },
     quit: function () {
       stopSpeechRecognition();
       document.body.innerHTML = '<div style="font:600 18px Outfit,sans-serif;padding:40px;color:#F0D78A;background:#0c0e12;min-height:100vh">apperture web session ended. Refresh to reopen.</div>';
