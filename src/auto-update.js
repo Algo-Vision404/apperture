@@ -32,6 +32,8 @@ function createAutoUpdate(send) {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowDowngrade = false;
+  // Full installers only — differential NSIS patches can corrupt the uninstaller.
+  autoUpdater.disableDifferentialDownload = true;
   autoUpdater.logger = {
     info: () => {},
     warn: () => {},

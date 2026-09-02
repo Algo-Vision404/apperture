@@ -24,6 +24,10 @@ const canNotarize =
   !!process.env.APPLE_ID &&
   !!process.env.APPLE_APP_SPECIFIC_PASSWORD &&
   !!process.env.APPLE_TEAM_ID;
+// Windows Authenticode signing is opt-in. electron-builder will still try to
+// "sign" with signtool when this is left on without a real cert, which mutates
+// the NSIS installer after its CRC is embedded and breaks uninstall.
+const hasWinCert = process.env.WIN_SIGN === "1" && !!process.env.CSC_LINK;
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
@@ -70,6 +74,9 @@ module.exports = {
   win: {
     target: [{ target: "nsis", arch: ["x64"] }],
     artifactName: "${productName}-win-${arch}.${ext}",
+    signAndEditExecutable: hasWinCert,
+    signExecutable: hasWinCert,
+    verifyUpdateCodeSignature: hasWinCert,
   },
   // A per-user install with a visible directory step: apperture is a personal overlay,
   // not a machine-wide service, so it should never need an elevation prompt.
@@ -78,7 +85,9 @@ module.exports = {
     perMachine: false,
     allowToChangeInstallationDirectory: true,
     shortcutName: "apperture",
-    differentialPackage: true
+    uninstallDisplayName: "apperture",
+    // Differential NSIS patches can leave Uninstall apperture.exe corrupted.
+    differentialPackage: false,
   },
   linux: {
     target: [{ target: "AppImage", arch: ["x64", "arm64"] }],

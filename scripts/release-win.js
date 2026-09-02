@@ -3,12 +3,14 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { verifyWinInstaller } = require('./verify-win-installer');
 
 const root = path.join(__dirname, '..');
 const pkg = require(path.join(root, 'package.json'));
 const version = pkg.version;
 const tag = `v${version}`;
 const dist = path.join(root, 'dist');
+const hasWinCert = process.env.WIN_SIGN === '1' && !!process.env.CSC_LINK;
 const assets = [
   path.join(dist, 'apperture-win-x64.exe'),
   path.join(dist, 'latest.yml'),
@@ -21,8 +23,17 @@ function run(cmd, args, opts = {}) {
 
 console.log(`Building apperture ${version} for Windows…`);
 run('npm', ['run', 'dist:win'], {
-  env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
+  env: {
+    ...process.env,
+    CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+    CSC_LINK: hasWinCert ? process.env.CSC_LINK : '',
+    WIN_CSC_LINK: hasWinCert ? (process.env.WIN_CSC_LINK || process.env.CSC_LINK || '') : '',
+    CSC_KEY_PASSWORD: hasWinCert ? (process.env.CSC_KEY_PASSWORD || '') : ''
+  }
 });
+
+const installerInfo = verifyWinInstaller(dist);
+console.log(`Verified installer integrity (${installerInfo.bytes} bytes).`);
 
 for (const filePath of assets) {
   if (!fs.existsSync(filePath)) {

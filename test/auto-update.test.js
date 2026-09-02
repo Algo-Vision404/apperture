@@ -19,14 +19,40 @@ test('dist scripts never pass --publish (prevents accidental GH overwrites)', ()
   }
 });
 
-test('NSIS builds ship differential updates for electron-updater', () => {
-  assert.equal(builder.nsis.differentialPackage, true);
+test('NSIS builds use full installers to keep uninstaller intact', () => {
+  assert.equal(builder.nsis.differentialPackage, false);
+  assert.equal(builder.nsis.uninstallDisplayName, 'apperture');
+});
+
+test('Windows signing is opt-in so unsigned NSIS installers are not mutated', () => {
+  const original = { ...process.env };
+  try {
+    delete require.cache[require.resolve('../electron-builder.cjs')];
+    delete process.env.WIN_SIGN;
+    delete process.env.CSC_LINK;
+    const unsigned = require('../electron-builder.cjs');
+    assert.equal(unsigned.win.signAndEditExecutable, false);
+    assert.equal(unsigned.win.signExecutable, false);
+    assert.equal(unsigned.win.verifyUpdateCodeSignature, false);
+
+    delete require.cache[require.resolve('../electron-builder.cjs')];
+    process.env.WIN_SIGN = '1';
+    process.env.CSC_LINK = '/tmp/cert.pfx';
+    const signed = require('../electron-builder.cjs');
+    assert.equal(signed.win.signAndEditExecutable, true);
+    assert.equal(signed.win.signExecutable, true);
+    assert.equal(signed.win.verifyUpdateCodeSignature, true);
+  } finally {
+    process.env = original;
+    delete require.cache[require.resolve('../electron-builder.cjs')];
+  }
 });
 
 test('auto-update module exists and only runs when packaged', () => {
   const src = fs.readFileSync(path.join(__dirname, '../src/auto-update.js'), 'utf8');
   assert.match(src, /electron-updater/);
   assert.match(src, /app\.isPackaged/);
+  assert.match(src, /disableDifferentialDownload = true/);
 });
 
 test('main, preload, and renderer expose update IPC', () => {
@@ -44,4 +70,5 @@ test('release script uploads latest.yml with the installer', () => {
   const script = fs.readFileSync(path.join(__dirname, '../scripts/release-win.js'), 'utf8');
   assert.match(script, /latest\.yml/);
   assert.match(script, /apperture-win-x64\.exe\.blockmap/);
+  assert.match(script, /verifyWinInstaller/);
 });
