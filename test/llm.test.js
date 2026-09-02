@@ -316,13 +316,24 @@ test('routes OpenRouter through openrouter.ai with free-router fallbacks', async
   assert.equal(capturedClientOptions.defaultHeaders['HTTP-Referer'], 'https://github.com/Blueturboguy07/cue');
   assert.equal(capturedCompletionRequest.model, OPENROUTER_DEFAULT_MODEL);
   assert.equal(capturedCompletionRequest.stream, true);
+  assert.equal(capturedCompletionRequest.tool_choice, 'none');
   assert.ok(Array.isArray(capturedCompletionRequest.models));
-  assert.ok(capturedCompletionRequest.models.includes('google/gemma-4-31b-it:free'));
+  assert.ok(capturedCompletionRequest.models.includes('minimax/minimax-m2.7:free'));
   assert.equal(capturedCompletionRequest.reasoning, undefined);
 });
 
-test('OpenRouter migrates legacy Nvidia Ultra free default and enables reasoning for Nemotron', async () => {
+test('OpenRouter migrates legacy free-router / Nvidia Ultra defaults and enables reasoning for Nemotron', async () => {
   const llm = createLLM(openrouterSettings({
+    models: {
+      openrouter: {
+        fast: 'openrouter/free',
+        smart: 'openrouter/free'
+      }
+    }
+  }));
+  assert.equal(llm.model, OPENROUTER_DEFAULT_MODEL);
+
+  const ultra = createLLM(openrouterSettings({
     models: {
       openrouter: {
         fast: 'nvidia/nemotron-3-ultra-550b-a55b:free',
@@ -330,7 +341,7 @@ test('OpenRouter migrates legacy Nvidia Ultra free default and enables reasoning
       }
     }
   }));
-  assert.equal(llm.model, OPENROUTER_DEFAULT_MODEL);
+  assert.equal(ultra.model, OPENROUTER_DEFAULT_MODEL);
 
   const nemo = createLLM(openrouterSettings({
     models: {

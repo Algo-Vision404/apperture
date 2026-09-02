@@ -6,21 +6,21 @@ const { createCompatibleClientOptions } = require('./openai-compatible');
 const CUSTOM_PROVIDER = 'custom';
 const OPENROUTER_PROVIDER = 'openrouter';
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-// openrouter/free auto-picks a healthy free model; Nvidia Ultra often returns
-// "Service temporarily overloaded" during peak free-tier demand.
-const OPENROUTER_DEFAULT_MODEL = 'openrouter/free';
+// openrouter/free sometimes routes to agentic models that emit tool-call markup
+// instead of answers. Prefer a concrete chat model; keep free fallbacks.
+const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
 const OPENROUTER_FALLBACK_MODELS = [
-  'google/gemma-4-31b-it:free',
   'minimax/minimax-m2.7:free',
-  'nvidia/nemotron-3-super-120b-a12b:free'
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'openrouter/free'
 ];
 const OPENROUTER_HEADERS = {
   'HTTP-Referer': 'https://github.com/Blueturboguy07/cue',
   'X-Title': 'cue'
 };
 // Older cue builds defaulted to Nvidia Ultra free, which is frequently at
-// capacity. Migrate that sticky setting to the free router on read.
-const LEGACY_OPENROUTER_MODEL_RE = /^nvidia\/nemotron-3-ultra-550b-a55b:free$/i;
+// capacity. Migrate that sticky setting to a chat-oriented free model on read.
+const LEGACY_OPENROUTER_MODEL_RE = /^(nvidia\/nemotron-3-ultra-550b-a55b:free|openrouter\/free)$/i;
 // gemini-2.0-flash was Google's default here until it was deprecated (Feb 2026)
 // and fully retired (Mar 3 2026) — every request against it now 404s with a
 // generic "exception parsing response" body. gemini-2.5-flash is the model
@@ -149,6 +149,47 @@ function stripDataUrl(dataUrl) {
   return m ? { mime: m[1], b64: m[2] } : null;
 }
 
+// Some free/agentic models leak tool-call envelopes into delta.content.
+// Strip complete blocks and hold back incomplete open tags so the UI never
+// shows <|tool_call_start|>… to the user.
+function createContentSanitizer(onToken) {
+  let pending = '';
+  const OPEN = '<|tool_call_start|>';
+  const CLOSE = '<|tool_call_end|>';
+
+  function flushSafe(emitTail) {
+    pending = pending
+      .replace(/<\|tool_call_start\|>[\s\S]*?<\|tool_call_end\|>/g, '')
+      .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+      .replace(/```(?:json|tool|xml)?\s*\{\s*"name"\s*:\s*"google"[\s\S]*?```/gi, '');
+
+    let emit = pending;
+    if (!emitTail) {
+      const maxHold = Math.max(OPEN.length, CLOSE.length, '<tool_call'.length) - 1;
+      let holdFrom = emit.length;
+      for (let i = 1; i <= Math.min(maxHold, emit.length); i++) {
+        const suffix = emit.slice(-i);
+        if (OPEN.startsWith(suffix) || CLOSE.startsWith(suffix) || '<tool_call'.startsWith(suffix)) {
+          holdFrom = emit.length - i;
+        }
+      }
+      pending = emit.slice(holdFrom);
+      emit = emit.slice(0, holdFrom);
+    } else {
+      pending = '';
+      emit = emit
+        .replace(/<\|tool_call_start\|>[\s\S]*/g, '')
+        .replace(/<tool_call>[\s\S]*/gi, '');
+    }
+    if (emit) onToken(emit);
+  }
+
+  return {
+    push(chunk) { pending += chunk; flushSafe(false); },
+    end() { flushSafe(true); }
+  };
+}
+
 async function streamOpenAI({ apiKey, baseURL, model, system, turns, imageDataUrl, maxTokens, onToken, defaultHeaders, extraBody }) {
   const OpenAI = require('openai');
   const clientOptions = baseURL ? { apiKey, baseURL } : { apiKey };
@@ -176,9 +217,18 @@ async function streamOpenAI({ apiKey, baseURL, model, system, turns, imageDataUr
   }
   const stream = await client.chat.completions.create(request);
   let full = '';
+  let raw = '';
+  const sanitize = createContentSanitizer((t) => { full += t; onToken(t); });
   for await (const part of stream) {
     const d = part.choices && part.choices[0] && part.choices[0].delta && part.choices[0].delta.content;
-    if (d) { full += d; onToken(d); }
+    if (d) {
+      raw += d;
+      sanitize.push(d);
+    }
+  }
+  sanitize.end();
+  if (!full.trim() && /tool_call_start|tool_call|google\s*\(/i.test(raw)) {
+    throw new Error('The model tried to call a web-search tool instead of answering. Retry — cue blocks tool calls.');
   }
   return full;
 }
@@ -403,7 +453,11 @@ function createLLM(settings) {
           const fallbacks = OPENROUTER_FALLBACK_MODELS
             .filter((id) => id !== model)
             .slice(0, 3);
-          const extraBody = { models: fallbacks };
+          const extraBody = {
+            models: fallbacks,
+            // cue never runs tools — stop agentic free models from emitting google(...) etc.
+            tool_choice: 'none'
+          };
           // Reasoning only on models that advertise it — free-router fallbacks often do not.
           if (/nemotron|reasoning/i.test(model)) {
             extraBody.reasoning = { effort: settings.smart ? 'high' : 'medium' };

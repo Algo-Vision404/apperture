@@ -55,8 +55,8 @@ const DEFAULTS = {
     minimax: { fast: 'MiniMax-M2.7', smart: 'MiniMax-M3' },
     azure: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     openrouter: {
-      fast: 'openrouter/free',
-      smart: 'openrouter/free'
+      fast: 'google/gemma-4-31b-it:free',
+      smart: 'google/gemma-4-31b-it:free'
     }
   }
 };

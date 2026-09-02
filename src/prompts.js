@@ -24,7 +24,9 @@ function applyRules(prompt, aiRules, mode) {
 }
 
 const BASE_RULES =
-  'Always respond in clear, natural English. Never switch to Hindi or any other language unless the user explicitly asks for it. ';
+  'Always respond in clear, natural English. Never switch to Hindi or any other language unless the user explicitly asks for it. ' +
+  'Answer directly in plain text. Never call tools, browse the web, or emit function/tool markup ' +
+  '(no <|tool_call_start|>, no google(...), no XML/JSON tool envelopes). cue has no tools — you are the answer. ';
 
 const MODES = {
 
