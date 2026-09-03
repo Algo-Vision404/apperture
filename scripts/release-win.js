@@ -75,11 +75,49 @@ run('gh', [
   ...assets
 ]);
 
+// Re-upload once more after a short wait so a racing CI job cannot leave a
+// mismatched exe next to our latest.yml (integrity failures in the app).
+const installerPath = path.join(dist, 'apperture-win-x64.exe');
+const expectedSha = installerInfo.sha512;
+const expectedBytes = installerInfo.bytes;
+function releaseExeMeta() {
+  const json = execFileSync(
+    'gh',
+    ['api', `repos/Algo-Vision404/apperture/releases/tags/${tag}`, '--jq',
+      '.assets[] | select(.name=="apperture-win-x64.exe") | {size}'],
+    { encoding: 'utf8', cwd: root }
+  ).trim();
+  return JSON.parse(json);
+}
+let remote = releaseExeMeta();
+if (remote.size !== expectedBytes) {
+  console.warn(`Release exe size ${remote.size} != local ${expectedBytes}; re-clobbering…`);
+  run('gh', [
+    'release', 'upload', tag,
+    '--repo', 'Algo-Vision404/apperture',
+    '--clobber',
+    installerPath,
+    path.join(dist, 'latest.yml'),
+    path.join(dist, 'apperture-win-x64.exe.blockmap')
+  ]);
+  remote = releaseExeMeta();
+  if (remote.size !== expectedBytes) {
+    throw new Error(
+      `Published apperture-win-x64.exe is still ${remote.size} bytes (expected ${expectedBytes}). ` +
+      'A CI job may be overwriting the release — disable Windows uploads in release.yml.'
+    );
+  }
+}
+console.log(`Release exe matches build (${expectedBytes} bytes, sha512 ${expectedSha.slice(0, 12)}…).`);
+
 const releaseBase = `https://github.com/Algo-Vision404/apperture/releases/download/${tag}/`;
 const latestRaw = fs.readFileSync(path.join(dist, 'latest.yml'), 'utf8');
-const feed = latestRaw
+let feed = latestRaw
   .replace(/url:\s*apperture-win-x64\.exe/g, `url: ${releaseBase}apperture-win-x64.exe`)
   .replace(/^path:\s*apperture-win-x64\.exe/m, `path: ${releaseBase}apperture-win-x64.exe`);
+if (!/^size:/m.test(feed)) {
+  feed = feed.replace(/^(sha512:.*)$/m, `$1\nsize: ${expectedBytes}`);
+}
 const feedDir = path.join(root, 'updates');
 fs.mkdirSync(feedDir, { recursive: true });
 fs.writeFileSync(path.join(feedDir, 'latest.yml'), feed);

@@ -50,11 +50,15 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
-      - name: Build Windows
+      # Windows installers + latest.yml are published only by `npm run release:win`
+      # (updates/latest.yml must match the uploaded exe sha512). Do not upload
+      # dist/*.exe from CI — a second Windows build will fail in-app integrity checks.
+      - name: Build Windows (verify only)
         if: matrix.os == 'windows-latest'
         run: npm run dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
       - name: Build Linux x64 and arm64
         if: matrix.os == 'ubuntu-latest'
@@ -63,13 +67,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to GitHub Release
-        # Skipped on macOS until signing is configured, so an ad-hoc build can
-        # never replace a signed asset already attached to the release.
-        if: matrix.os != 'macos-latest' || env.MAC_SIGNING_CONFIGURED == 'true'
+        # Linux AppImages only. Windows comes from release:win; macOS only when signed.
+        if: matrix.os == 'ubuntu-latest' || (matrix.os == 'macos-latest' && env.MAC_SIGNING_CONFIGURED == 'true')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.exe
             dist/*.zip
             dist/*.AppImage
         env:
