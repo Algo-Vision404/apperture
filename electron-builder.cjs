@@ -34,6 +34,7 @@ module.exports = {
   appId: "com.apperture.overlay",
   productName: "apperture",
   copyright: "Copyright © apperture",
+  icon: "build-resources/icon.png",
   asar: false,
   // Baked into app-update.yml so installed apps know where to check. Builds do
   // not upload to GitHub unless you pass electron-builder --publish (never in dist:*).

@@ -16,6 +16,7 @@
     "postinstall": "node scripts/rename-electron.js",
     "prepare:whisper": "node scripts/prepare-whisper-runtime.js",
     "verify:whisper-runtime": "node scripts/verify-whisper-runtime.js",
+    "generate:icon": "node scripts/generate-app-icon.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --mac zip",
     "dist:mac": "electron-builder --mac zip",
@@ -38,7 +39,9 @@
     "electron-builder": "^26.15.3",
     "extract-zip": "^2.0.1",
     "resedit": "^3.0.2",
-    "tar": "^7.5.22"
+    "sharp": "^0.35.4",
+    "tar": "^7.5.22",
+    "to-ico": "^1.1.5"
   },
   "engines": {
     "node": ">=22.12.0"
