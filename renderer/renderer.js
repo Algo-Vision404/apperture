@@ -1697,9 +1697,9 @@
   }
 
   function openSettingsTab(tabName) {
-    openSettings();
-    const tab = document.querySelector(`.s-tab[data-tab="${tabName}"]`);
-    if (tab && !tab.classList.contains('on')) tab.click();
+    const wasHidden = scrim.classList.contains('hidden');
+    if (wasHidden) openSettings();
+    activateSettingsTab(tabName);
   }
 
   document.querySelectorAll('#prep-status .prep-item').forEach((el) => {
@@ -1939,11 +1939,35 @@
 
   // ---- settings ----------------------------------------------------------
   const scrim = $('#settings-scrim');
+  const settingsPaneScroll = () => document.querySelector('#settings .s-pane-scroll');
+
+  function resetSettingsScroll() {
+    const scrollEl = settingsPaneScroll();
+    if (!scrollEl) return;
+    scrollEl.scrollTop = 0;
+    requestAnimationFrame(() => {
+      if (scrollEl.isConnected) scrollEl.scrollTop = 0;
+    });
+  }
+
+  function activateSettingsTab(tabName) {
+    const tab = document.querySelector(`.s-tab[data-tab="${tabName}"]`);
+    const pane = document.querySelector(`.s-tab-pane[data-pane="${tabName}"]`);
+    if (!tab || !pane) return;
+    document.querySelectorAll('.s-tab').forEach((t) => t.classList.remove('on'));
+    document.querySelectorAll('.s-tab-pane').forEach((p) => p.classList.add('hidden'));
+    tab.classList.add('on');
+    pane.classList.remove('hidden');
+    resetSettingsScroll();
+    if (tabName === 'about') void refreshUpdateInfo();
+  }
+
   function openSettings() {
     if (!scrim.classList.contains('hidden')) return;
     fillSettings();
     initKeysAdvancedToggle();
     scrim.classList.remove('hidden');
+    resetSettingsScroll();
     refreshWhisperModels();
   }
   async function commitSettings() {
@@ -1974,12 +1998,7 @@
   document.querySelectorAll('.s-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       if (tab.classList.contains('on')) return;
-      document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('on'));
-      document.querySelectorAll('.s-tab-pane').forEach(p => p.classList.add('hidden'));
-      tab.classList.add('on');
-      const pane = document.querySelector(`.s-tab-pane[data-pane="${tab.dataset.tab}"]`);
-      if (pane) pane.classList.remove('hidden');
-      if (tab.dataset.tab === 'about') void refreshUpdateInfo();
+      activateSettingsTab(tab.dataset.tab);
     });
   });
 
@@ -2524,6 +2543,12 @@
   setIgnore(true); // start fully click-through; hovering the panel re-enables it
 
   // ---- window drag (manual — reliable on Linux + with click-through) ----
+  const DRAG_CLICK_SUPPRESS_MS = 320;
+  let suppressClickUntil = 0;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragDidMove = false;
+
   function dragTarget(el) {
     if (!el || !el.closest) return null;
     if (el.closest('button, a, input, textarea, select, .tb-hide, .tb-stop, .tb-quit, .tb-logo, .tb-guide')) return null;
@@ -2531,6 +2556,11 @@
   }
   function onDragMove(e) {
     if (!isDragging) return;
+    if (!dragDidMove) {
+      const dx = e.screenX - dragStartX;
+      const dy = e.screenY - dragStartY;
+      if ((dx * dx + dy * dy) > 16) dragDidMove = true;
+    }
     apperture.dragMove(e.screenX, e.screenY);
   }
   function onDragEnd() {
@@ -2541,7 +2571,14 @@
     window.removeEventListener('mousemove', onDragMove, true);
     window.removeEventListener('mouseup', onDragEnd, true);
     window.removeEventListener('blur', onDragEnd, true);
+    if (dragDidMove) suppressClickUntil = Date.now() + DRAG_CLICK_SUPPRESS_MS;
+    dragDidMove = false;
   }
+  document.addEventListener('click', (e) => {
+    if (Date.now() >= suppressClickUntil) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
   document.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     // Web page layout breaks if #app is switched to position:fixed for dragging.
@@ -2552,6 +2589,9 @@
     ignoring = false;
     apperture.setIgnoreMouse(false);
     isDragging = true;
+    dragDidMove = false;
+    dragStartX = e.screenX;
+    dragStartY = e.screenY;
     document.body.classList.add('is-dragging');
     apperture.dragStart(e.screenX, e.screenY);
     window.addEventListener('mousemove', onDragMove, true);

@@ -58,3 +58,12 @@ test('panel glass is opaque enough to read on light desktops', () => {
   assert.match(css, /--glass:\s*rgba\(10,\s*12,\s*18,\s*0\.(8[0-9]|9[0-9]|1\.0)\)/);
   assert.doesNotMatch(css, /#panel\.glass[\s\S]{0,280}rgba\(10,\s*12,\s*18,\s*0\.0[0-9]\)/);
 });
+
+test('settings uses one shared scroll container and resets on tab change', () => {
+  assert.match(html, /class="s-pane-scroll"/);
+  assert.match(js, /function resetSettingsScroll/);
+  assert.match(js, /function activateSettingsTab/);
+  assert.match(js, /resetSettingsScroll\(\)/);
+  assert.match(js, /dragDidMove/);
+  assert.match(js, /suppressClickUntil/);
+});

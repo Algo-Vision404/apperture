@@ -157,6 +157,7 @@
 #input,
 .ts-list,
 .transcript-wrap,
+.s-pane-scroll,
 .s-tab-pane,
 .s-tabs,
 .ai-text pre {
@@ -166,6 +167,7 @@
 #input::-webkit-scrollbar-thumb,
 .ts-list::-webkit-scrollbar-thumb,
 .transcript-wrap::-webkit-scrollbar-thumb,
+.s-pane-scroll::-webkit-scrollbar-thumb,
 .s-tab-pane::-webkit-scrollbar-thumb,
 .ai-text pre::-webkit-scrollbar-thumb {
   background-color: rgba(255, 236, 190, 0.14);
@@ -174,12 +176,14 @@
 #input:hover::-webkit-scrollbar-thumb,
 .ts-list:hover::-webkit-scrollbar-thumb,
 .transcript-wrap:hover::-webkit-scrollbar-thumb,
+.s-pane-scroll:hover::-webkit-scrollbar-thumb,
 .s-tab-pane:hover::-webkit-scrollbar-thumb,
 .ai-text pre:hover::-webkit-scrollbar-thumb,
 #messages::-webkit-scrollbar-thumb:hover,
 #input::-webkit-scrollbar-thumb:hover,
 .ts-list::-webkit-scrollbar-thumb:hover,
 .transcript-wrap::-webkit-scrollbar-thumb:hover,
+.s-pane-scroll::-webkit-scrollbar-thumb:hover,
 .s-tab-pane::-webkit-scrollbar-thumb:hover,
 .ai-text pre::-webkit-scrollbar-thumb:hover {
   background-color: var(--sb-thumb-hover);
@@ -188,6 +192,7 @@
 #input::-webkit-scrollbar-thumb:active,
 .ts-list::-webkit-scrollbar-thumb:active,
 .transcript-wrap::-webkit-scrollbar-thumb:active,
+.s-pane-scroll::-webkit-scrollbar-thumb:active,
 .s-tab-pane::-webkit-scrollbar-thumb:active,
 .ai-text pre::-webkit-scrollbar-thumb:active {
   background-color: var(--sb-thumb-active);
@@ -1369,8 +1374,15 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   box-shadow: inset 0 1px 0 rgba(255,236,190,0.08);
 }
 
-/* Tab panes */
-.s-tab-pane { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; overscroll-behavior: contain; padding-right: 2px; }
+/* Tab panes — one shared scroll container so switching tabs always starts at the top */
+.s-pane-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+.s-tab-pane { display: flex; flex-direction: column; gap: 8px; }
 .s-tab-pane.hidden { display: none; }
 
 .s-body { display: flex; flex-direction: column; gap: 8px; }
