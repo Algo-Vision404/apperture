@@ -646,48 +646,10 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   min-height: 120px;
   padding: 10px 4px 14px;
   animation: fadeUp 280ms var(--ease-out) both;
-}
-.me-quick {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-  width: 100%;
-}
-.me-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 10px 11px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,236,190,0.12);
-  background: rgba(255,236,190,0.04);
-  color: var(--tx-2);
-  font-family: var(--font);
-  font-size: 12px;
-  line-height: 1.35;
-  text-align: left;
-  cursor: pointer;
-  transition: background 140ms var(--ease), border-color 140ms var(--ease), transform 140ms var(--ease);
-}
-.me-card:hover {
-  background: rgba(var(--accent-rgb), 0.10);
-  border-color: rgba(var(--accent-rgb), 0.28);
-  transform: translateY(-1px);
-}
-.me-card strong {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--tx-1);
-}
-.me-card span { color: var(--tx-mut); font-size: 11px; }
-@media (max-width: 520px) {
-  .me-quick { grid-template-columns: 1fr; }
 }
 
 .ai-thinking {
@@ -1852,7 +1814,7 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 
 @media (prefers-reduced-motion: reduce) {
   #panel, #toolbar, #settings, .user-bubble, .ai-text, .ai-block, .ai-text .w, .glass::after, .tb-stop.active,
-  .listen-rail, .me-card, .ai-thinking, .web-notice, .tb-logo, .tb-logo svg {
+  .listen-rail, .ai-thinking, .web-notice, .tb-logo, .tb-logo svg {
     animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important;
   }
   #live-dot, .ai-thinking::after, #send-btn.busy { animation: none !important; }

@@ -115,48 +115,16 @@
     showEmptyState();
   }
 
-  function wireEmptyActions(root) {
-    if (!root) return;
-    root.querySelectorAll('[data-empty-action]').forEach(function (btn) {
-      if (btn.dataset.wired === '1') return;
-      btn.dataset.wired = '1';
-      btn.addEventListener('click', function () {
-        const action = btn.getAttribute('data-empty-action');
-        if (action === 'listen') $('#stop-btn').click();
-        else if (action === 'assist') runMode('assist', '');
-        else if (action === 'settings') openSettings();
-      });
-    });
-  }
-
   function showEmptyState() {
-    const existing = messages.querySelector('.messages-empty');
-    if (existing && existing.querySelector('.me-quick')) {
-      wireEmptyActions(existing);
-      return;
-    }
-    if (existing) existing.remove();
+    if (messages.querySelector('.messages-empty')) return;
     const empty = document.createElement('div');
     empty.className = 'messages-empty';
     empty.id = 'messages-empty';
-    const assistHint = (isWindows || !isMac) ? 'Ctrl+↵' : '⌘↵';
     empty.innerHTML =
       '<div class="me-kicker">apperture</div>' +
       '<div class="me-title">Ready when you are</div>' +
-      '<div class="me-body">Listen live, ask a question, or let Assist read the room.</div>' +
-      '<div class="me-quick">' +
-        '<button type="button" class="me-card" data-empty-action="listen">' +
-          '<strong>Listen</strong><span>Mic + live captions</span>' +
-        '</button>' +
-        '<button type="button" class="me-card" data-empty-action="assist">' +
-          '<strong>Assist</strong><span>' + esc(assistHint) + ' — scan screen</span>' +
-        '</button>' +
-        '<button type="button" class="me-card" data-empty-action="settings">' +
-          '<strong>Settings</strong><span>Gear icon · keys &amp; stealth</span>' +
-        '</button>' +
-      '</div>';
+      '<div class="me-body">Use the mic to listen, type a question below, or hit Assist to scan your screen.</div>';
     messages.appendChild(empty);
-    wireEmptyActions(empty);
   }
 
   function hideEmptyState() {
@@ -2897,7 +2865,6 @@
     syncSmartToggleUi();
     if (typeof settings.useResume !== 'boolean') settings.useResume = true;
     updateResumeToggleUi();
-    wireEmptyActions(document.getElementById('messages-empty'));
     showEmptyState();
     syncPlaceholder();
     updateHistoryBadge();
