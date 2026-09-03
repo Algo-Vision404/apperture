@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const { normalizeBaseUrl } = require('./openai-compatible');
-const { migrateGroqModels } = require('./llm');
+const { migrateGroqModels, normalizeApiKey } = require('./llm');
 
 const FILE = path.join(app.getPath('userData'), 'apperture-data.json');
 
@@ -117,6 +117,12 @@ module.exports = {
     load();
     const nextSettings = deepMerge(data, patch || {});
     nextSettings.baseUrl = normalizeBaseUrl(nextSettings.baseUrl);
+    if (nextSettings.apiKeys && typeof nextSettings.apiKeys === 'object') {
+      for (const name of Object.keys(nextSettings.apiKeys)) {
+        if (name === 'ollama') continue; // URL field, not a secret token
+        nextSettings.apiKeys[name] = normalizeApiKey(nextSettings.apiKeys[name]);
+      }
+    }
     data = nextSettings;
     save();
     return data;

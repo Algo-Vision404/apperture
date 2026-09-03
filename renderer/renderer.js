@@ -2005,22 +2005,56 @@
     $('#custom-endpoint-settings').classList.toggle('hidden', settings.provider !== 'custom');
   }
 
+  function maskKeyPlaceholder(key, fallback) {
+    const k = String(key || '');
+    if (!k) return fallback;
+    if (k.length < 14) return 'saved — paste to replace';
+    return 'saved · ' + k.slice(0, 10) + '…' + k.slice(-4) + ' — paste to replace';
+  }
+
+  function fillSecretKey(id, value, fallbackPlaceholder) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = '';
+    el.placeholder = maskKeyPlaceholder(value, fallbackPlaceholder);
+    el.dataset.saved = value ? '1' : '';
+  }
+
+  function cleanApiKey(v) {
+    let k = String(v || '');
+    k = k.replace(/[\u200B-\u200D\uFEFF\u2060\u202A-\u202E]/g, '');
+    k = k.trim().replace(/^Bearer\s+/i, '').trim();
+    if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+      k = k.slice(1, -1).trim();
+    }
+    k = k.replace(/^Bearer\s+/i, '').trim();
+    return k.replace(/\s+/g, '');
+  }
+
+  function readSecretKey(id, previous) {
+    const el = document.getElementById(id);
+    const typed = cleanApiKey(el && el.value);
+    if (typed) return typed;
+    return previous || '';
+  }
+
   function fillSettings() {
-    // Keys tab
+    // Keys tab — leave secret inputs blank so Done cannot wipe a stored key
     syncSegGroup('#provider-seg button', 'provider', settings.provider);
-    $('#key-openai').value = settings.apiKeys.openai || '';
-    $('#key-anthropic').value = settings.apiKeys.anthropic || '';
-    $('#key-gemini').value = settings.apiKeys.gemini || '';
-    $('#key-openrouter').value = settings.apiKeys.openrouter || '';
-    $('#key-deepgram').value = settings.apiKeys.deepgram || '';
-    $('#key-custom').value = settings.apiKeys.custom || '';
+    const keys = settings.apiKeys || {};
+    fillSecretKey('key-openai', keys.openai, 'sk-...');
+    fillSecretKey('key-anthropic', keys.anthropic, 'sk-ant-...');
+    fillSecretKey('key-gemini', keys.gemini, 'AIza...');
+    fillSecretKey('key-openrouter', keys.openrouter, 'sk-or-v1-...');
+    fillSecretKey('key-deepgram', keys.deepgram, 'dg-...');
+    fillSecretKey('key-custom', keys.custom, 'optional');
     $('#base-url').value = settings.baseUrl || '';
     updateCustomProviderFields();
-    $('#key-ollama').value = settings.apiKeys.ollama || '';
-    $('#key-groq').value = settings.apiKeys.groq || '';
-    $('#key-minimax').value = settings.apiKeys.minimax || '';
+    $('#key-ollama').value = keys.ollama || '';
+    fillSecretKey('key-groq', keys.groq, 'gsk_...');
+    fillSecretKey('key-minimax', keys.minimax, 'MiniMax API key');
     syncSegGroup('#minimax-region-seg button', 'region', settings.minimaxRegion || 'global_en');
-    $('#key-azure').value = settings.apiKeys.azure || '';
+    fillSecretKey('key-azure', keys.azure, 'azure key or Entra token');
     $('#azure-endpoint').value = settings.azureEndpoint || '';
     const m = settings.models[settings.provider] || { fast: '', smart: '' };
     $('#model-fast').value = m.fast; $('#model-smart').value = m.smart;
@@ -2217,7 +2251,16 @@
     STT_KEY_PROVIDERS.forEach((provider) => {
       const main = document.getElementById('key-' + provider);
       const stt = document.getElementById('stt-key-' + provider);
-      if (main && stt) stt.value = main.value || '';
+      if (!stt) return;
+      const saved = (settings.apiKeys && settings.apiKeys[provider]) || '';
+      const fallback = stt.getAttribute('placeholder') || '';
+      stt.value = '';
+      stt.placeholder = maskKeyPlaceholder(saved, fallback.indexOf('saved') === 0 ? 'paste key…' : fallback);
+      stt.dataset.saved = saved ? '1' : '';
+      if (main) {
+        main.placeholder = maskKeyPlaceholder(saved, main.placeholder || '');
+        main.dataset.saved = saved ? '1' : '';
+      }
     });
   }
 
@@ -2225,8 +2268,11 @@
     STT_KEY_PROVIDERS.forEach((provider) => {
       const main = document.getElementById('key-' + provider);
       const stt = document.getElementById('stt-key-' + provider);
-      if (main && stt && stt.value.trim()) main.value = stt.value.trim();
-      else if (main && stt && !stt.value.trim() && main.value.trim()) stt.value = main.value.trim();
+      if (!main || !stt) return;
+      const sttVal = cleanApiKey(stt.value);
+      const mainVal = cleanApiKey(main.value);
+      if (sttVal && !mainVal) main.value = sttVal;
+      else if (mainVal && !sttVal) stt.value = mainVal;
     });
   }
 
@@ -2261,15 +2307,48 @@
     }
   }
 
-  // Keep Audio-tab and Keys-tab fields in sync while typing.
+  // Keep Audio-tab and Keys-tab fields in sync while typing new keys only.
   STT_KEY_PROVIDERS.forEach((provider) => {
     const main = document.getElementById('key-' + provider);
     const stt = document.getElementById('stt-key-' + provider);
     if (main && stt) {
-      main.addEventListener('input', () => { stt.value = main.value; });
-      stt.addEventListener('input', () => { main.value = stt.value; });
+      main.addEventListener('input', () => { if (main.value) stt.value = main.value; });
+      stt.addEventListener('input', () => { if (stt.value) main.value = stt.value; });
     }
   });
+
+  const testOpenRouterBtn = document.getElementById('test-openrouter-btn');
+  if (testOpenRouterBtn && !testOpenRouterBtn.dataset.wired) {
+    testOpenRouterBtn.dataset.wired = '1';
+    testOpenRouterBtn.addEventListener('click', async () => {
+      if (!apperture.testOpenRouterKey) {
+        $('#s-status').textContent = 'Key testing needs the desktop app.';
+        return;
+      }
+      const typed = cleanApiKey(($('#key-openrouter') && $('#key-openrouter').value) || '');
+      const sttTyped = cleanApiKey((document.getElementById('stt-key-openrouter') || {}).value || '');
+      const candidate = typed || sttTyped || '';
+      testOpenRouterBtn.disabled = true;
+      testOpenRouterBtn.textContent = 'Testing…';
+      $('#s-status').textContent = 'Testing OpenRouter key…';
+      try {
+        const result = await apperture.testOpenRouterKey(candidate);
+        $('#s-status').textContent = (result && result.message) || 'Test finished.';
+        if (result && result.ok && candidate) {
+          // Persist a known-good newly typed key immediately.
+          settings.apiKeys.openrouter = candidate;
+          settings = await apperture.settingsSet({ apiKeys: { openrouter: candidate } });
+          fillSecretKey('key-openrouter', settings.apiKeys.openrouter, 'sk-or-v1-...');
+          syncSttKeyFieldsFromKeys();
+        }
+      } catch (error) {
+        $('#s-status').textContent = error && error.message ? error.message : String(error);
+      } finally {
+        testOpenRouterBtn.disabled = false;
+        testOpenRouterBtn.textContent = 'Test key';
+      }
+    });
+  }
 
   function formatBytes(bytes) {
     if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
@@ -2442,35 +2521,30 @@
   apperture.on('whisper:models-changed', () => refreshWhisperModels());
 
   async function saveSettings() {
-    // Keys — normalize paste artifacts (Bearer / quotes / whitespace)
-    function cleanKey(v) {
-      let k = String(v || '').trim();
-      if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) k = k.slice(1, -1).trim();
-      return k.replace(/^Bearer\s+/i, '').trim();
-    }
-    settings.apiKeys.openai = cleanKey($('#key-openai').value);
-    settings.apiKeys.anthropic = cleanKey($('#key-anthropic').value);
-    settings.apiKeys.gemini = cleanKey($('#key-gemini').value);
-    settings.apiKeys.openrouter = cleanKey($('#key-openrouter').value);
-    settings.apiKeys.deepgram = cleanKey($('#key-deepgram').value);
-    settings.apiKeys.custom = cleanKey($('#key-custom').value);
+    const prevKeys = Object.assign({}, (settings.apiKeys || {}));
+    syncKeysFromSttKeyFields();
+    settings.apiKeys.openai = readSecretKey('key-openai', prevKeys.openai);
+    settings.apiKeys.anthropic = readSecretKey('key-anthropic', prevKeys.anthropic);
+    settings.apiKeys.gemini = readSecretKey('key-gemini', prevKeys.gemini);
+    settings.apiKeys.openrouter = readSecretKey('key-openrouter', prevKeys.openrouter);
+    settings.apiKeys.deepgram = readSecretKey('key-deepgram', prevKeys.deepgram);
+    settings.apiKeys.custom = readSecretKey('key-custom', prevKeys.custom);
     settings.baseUrl = $('#base-url').value.trim();
     settings.apiKeys.ollama = $('#key-ollama').value.trim();
-    syncKeysFromSttKeyFields();
-    settings.apiKeys.groq = cleanKey($('#key-groq').value);
-    settings.apiKeys.minimax = cleanKey($('#key-minimax').value);
-    settings.apiKeys.azure = cleanKey($('#key-azure').value);
-    // Prefer Audio-tab values when present (same keys, easier to find).
+    settings.apiKeys.groq = readSecretKey('key-groq', prevKeys.groq);
+    settings.apiKeys.minimax = readSecretKey('key-minimax', prevKeys.minimax);
+    settings.apiKeys.azure = readSecretKey('key-azure', prevKeys.azure);
+    // Prefer Audio-tab values when the user typed a new key there.
     const sttGroq = document.getElementById('stt-key-groq');
     const sttOpenAI = document.getElementById('stt-key-openai');
     const sttGemini = document.getElementById('stt-key-gemini');
     const sttDeepgram = document.getElementById('stt-key-deepgram');
     const sttOpenRouter = document.getElementById('stt-key-openrouter');
-    if (sttGroq && sttGroq.value.trim()) settings.apiKeys.groq = cleanKey(sttGroq.value);
-    if (sttOpenAI && sttOpenAI.value.trim()) settings.apiKeys.openai = cleanKey(sttOpenAI.value);
-    if (sttGemini && sttGemini.value.trim()) settings.apiKeys.gemini = cleanKey(sttGemini.value);
-    if (sttDeepgram && sttDeepgram.value.trim()) settings.apiKeys.deepgram = cleanKey(sttDeepgram.value);
-    if (sttOpenRouter && sttOpenRouter.value.trim()) settings.apiKeys.openrouter = cleanKey(sttOpenRouter.value);
+    if (sttGroq && cleanApiKey(sttGroq.value)) settings.apiKeys.groq = cleanApiKey(sttGroq.value);
+    if (sttOpenAI && cleanApiKey(sttOpenAI.value)) settings.apiKeys.openai = cleanApiKey(sttOpenAI.value);
+    if (sttGemini && cleanApiKey(sttGemini.value)) settings.apiKeys.gemini = cleanApiKey(sttGemini.value);
+    if (sttDeepgram && cleanApiKey(sttDeepgram.value)) settings.apiKeys.deepgram = cleanApiKey(sttDeepgram.value);
+    if (sttOpenRouter && cleanApiKey(sttOpenRouter.value)) settings.apiKeys.openrouter = cleanApiKey(sttOpenRouter.value);
     settings.azureEndpoint = $('#azure-endpoint').value.trim();
     if (!settings.models[settings.provider]) settings.models[settings.provider] = {};
     settings.models[settings.provider].fast = $('#model-fast').value.trim();
@@ -2507,12 +2581,11 @@
     settings.questionsToAsk = $('#questions-to-ask').value.trim();
     try {
       settings = await apperture.settingsSet(settings);
-      // Reflect cleaned keys back into the inputs.
-      $('#key-openai').value = settings.apiKeys.openai || '';
-      $('#key-anthropic').value = settings.apiKeys.anthropic || '';
-      $('#key-gemini').value = settings.apiKeys.gemini || '';
-      $('#key-openrouter').value = settings.apiKeys.openrouter || '';
-      $('#key-groq').value = settings.apiKeys.groq || '';
+      fillSecretKey('key-openai', settings.apiKeys.openai, 'sk-...');
+      fillSecretKey('key-anthropic', settings.apiKeys.anthropic, 'sk-ant-...');
+      fillSecretKey('key-gemini', settings.apiKeys.gemini, 'AIza...');
+      fillSecretKey('key-openrouter', settings.apiKeys.openrouter, 'sk-or-v1-...');
+      fillSecretKey('key-groq', settings.apiKeys.groq, 'gsk_...');
       syncSttKeyFieldsFromKeys();
       let status = statusText();
       const orKey = settings.apiKeys.openrouter || '';
@@ -2521,6 +2594,8 @@
         status = 'Provider is OpenRouter, but only an OpenAI key is filled. Paste an sk-or-v1-… key in the OpenRouter field (or switch Provider to OpenAI).';
       } else if (settings.provider === 'openrouter' && orKey && /^sk-/.test(orKey) && !/^sk-or-/i.test(orKey)) {
         status = 'OpenRouter needs an sk-or-v1-… key from openrouter.ai/settings/keys — an OpenAI sk-… key will return “401 User not found”.';
+      } else if (settings.provider === 'openrouter' && orKey) {
+        status = 'OpenRouter key saved. Click Test key if chat still returns 401.';
       } else if (!(settings.apiKeys.groq || settings.apiKeys.openai || settings.apiKeys.gemini || settings.apiKeys.deepgram) && settings.apiKeys.openrouter) {
         status = status + ' · For free mic captions, also add a Groq key under Audio';
       }

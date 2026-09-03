@@ -79,10 +79,13 @@ const PROVIDER_LABELS = {
   openrouter: 'OpenRouter'
 };
 
-// Paste hygiene: users often copy "Bearer …", quotes, or trailing newlines.
+// Paste hygiene: users often copy "Bearer …", quotes, newlines, or zero-width chars.
 function normalizeApiKey(raw) {
-  let key = typeof raw === 'string' ? raw.trim() : '';
+  let key = typeof raw === 'string' ? raw : '';
   if (!key) return '';
+  // Strip BOM / zero-width / bidi marks that survive paste from web dashboards.
+  key = key.replace(/[\u200B-\u200D\uFEFF\u2060\u202A-\u202E]/g, '');
+  key = key.trim();
   key = key.replace(/^Bearer\s+/i, '').trim();
   if (
     (key.startsWith('"') && key.endsWith('"')) ||
@@ -91,6 +94,8 @@ function normalizeApiKey(raw) {
     key = key.slice(1, -1).trim();
   }
   key = key.replace(/^Bearer\s+/i, '').trim();
+  // API keys never contain whitespace — remove accidental wraps from rich-text paste.
+  key = key.replace(/\s+/g, '');
   return key;
 }
 
@@ -188,7 +193,7 @@ function formatProviderErrorMessage(error, provider, model) {
 
   if (isAuthError(error)) {
     if (provider === OPENROUTER_PROVIDER || /user not found/i.test(rawMessage)) {
-      return 'OpenRouter rejected this API key (401). Create a new key at openrouter.ai/settings/keys — use a normal API key starting with sk-or-v1-… (not a provisioning/management key), paste it under Settings → AI → OpenRouter, click Done, then try again. Mic captions need Groq/OpenAI/Gemini (or OpenRouter credits) under Settings → Audio.';
+      return 'OpenRouter rejected this API key (401). Paste a fresh normal key (sk-or-v1-…) under Settings → AI → OpenRouter, click Test key, then Done. Do not use a provisioning/management key. Leave the field blank when saving if you already have a key stored — an empty field used to wipe it.';
     }
     if (provider === 'openai' || provider === 'groq' || provider === 'minimax' || provider === 'azure') {
       return `${label} rejected this API key (${error.status || 401}). Open Settings → AI, paste a valid ${label} key for the selected provider, click Done, then try again.`;
@@ -487,6 +492,71 @@ async function streamOllama({ apiKey, model, system, turns, imageDataUrl, maxTok
   return full;
 }
 
+async function testOpenRouterKey(apiKey) {
+  const key = normalizeApiKey(apiKey);
+  if (!key) {
+    return { ok: false, code: 'missing', message: 'Paste an OpenRouter key first (sk-or-v1-…), then click Test key.' };
+  }
+  if (!looksLikeOpenRouterKey(key)) {
+    return {
+      ok: false,
+      code: 'shape',
+      message: keyShapeHint(OPENROUTER_PROVIDER, key)
+        || 'OpenRouter keys should start with sk-or-v1-.'
+    };
+  }
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer ' + key,
+        ...OPENROUTER_HEADERS
+      }
+    });
+    let body = null;
+    try { body = await res.json(); } catch (_) { body = null; }
+    if (!res.ok) {
+      const raw = (body && (body.error && (body.error.message || body.error) || body.message)) || ('HTTP ' + res.status);
+      const err = new Error(typeof raw === 'string' ? raw : JSON.stringify(raw));
+      err.status = res.status;
+      return {
+        ok: false,
+        code: 'auth',
+        status: res.status,
+        message: formatProviderErrorMessage(err, OPENROUTER_PROVIDER)
+      };
+    }
+    const data = (body && body.data) || body || {};
+    if (data.is_management_key) {
+      return {
+        ok: false,
+        code: 'management',
+        message: 'This is a provisioning/management key — it cannot call chat models. At openrouter.ai/settings/keys create a normal API key (not “Create Provisioning Key”).'
+      };
+    }
+    const label = data.label || data.name || 'default';
+    const limit = data.limit != null ? String(data.limit) : null;
+    return {
+      ok: true,
+      code: 'ok',
+      message: limit
+        ? `OpenRouter key works (${label}, limit ${limit}).`
+        : `OpenRouter key works (${label}).`,
+      data: {
+        label,
+        is_management_key: !!data.is_management_key,
+        limit: data.limit != null ? data.limit : null
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      code: 'network',
+      message: 'Could not reach OpenRouter to test the key. Check your internet connection and try again.'
+    };
+  }
+}
+
 function createLLM(settings) {
   const provider = settings.provider;
   const keys = settings.apiKeys || {};
@@ -617,6 +687,7 @@ module.exports = {
   isUpstreamOverloadError,
   normalizeApiKey,
   keyShapeHint,
+  testOpenRouterKey,
   CURRENT_GEMINI_DEFAULT,
   OPENROUTER_BASE_URL,
   OPENROUTER_DEFAULT_MODEL,

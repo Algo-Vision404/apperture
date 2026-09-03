@@ -503,6 +503,34 @@
     settingsSet: async function (patch) {
       return api('/api/settings', { method: 'POST', body: JSON.stringify(patch || {}) });
     },
+    testOpenRouterKey: async function (rawKey) {
+      const settings = await api('/api/settings');
+      let key = String(rawKey || (settings.apiKeys && settings.apiKeys.openrouter) || '').trim();
+      key = key.replace(/^Bearer\s+/i, '').replace(/\s+/g, '');
+      if (!key) return { ok: false, message: 'Paste an OpenRouter key first, then click Test key.' };
+      try {
+        const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+          headers: { Authorization: 'Bearer ' + key }
+        });
+        const body = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+          return {
+            ok: false,
+            message: (body.error && body.error.message) || body.message || ('OpenRouter HTTP ' + res.status)
+          };
+        }
+        const data = body.data || body || {};
+        if (data.is_management_key) {
+          return {
+            ok: false,
+            message: 'This is a provisioning/management key. Create a normal API key at openrouter.ai/settings/keys.'
+          };
+        }
+        return { ok: true, message: 'OpenRouter key works.' };
+      } catch (err) {
+        return { ok: false, message: 'Could not reach OpenRouter from the browser preview.' };
+      }
+    },
     whisperModels: async function () {
       return {
         runtime: {

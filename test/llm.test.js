@@ -172,7 +172,7 @@ test('formatProviderErrorMessage: OpenRouter 401 User not found becomes actionab
   const message = formatProviderErrorMessage(error, 'openrouter');
   assert.match(message, /OpenRouter rejected this API key/);
   assert.match(message, /sk-or-v1/);
-  assert.match(message, /openrouter\.ai\/settings\/keys/);
+  assert.match(message, /Test key/);
   assert.doesNotMatch(message, /^401 User not found$/);
 });
 
@@ -201,6 +201,42 @@ test('resolveApiKey: strips Bearer prefix and quotes from pasted keys', () => {
     resolveApiKey('openrouter', { openrouter: 'Bearer "sk-or-v1-abc"' }),
     'sk-or-v1-abc'
   );
+  assert.equal(
+    resolveApiKey('openrouter', { openrouter: 'sk-or-v1-\u200Bdeadbeef' }),
+    'sk-or-v1-deadbeef'
+  );
+});
+
+test('testOpenRouterKey rejects management-key shaped responses', async () => {
+  const { testOpenRouterKey } = require('../src/llm');
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({
+    ok: true,
+    json: async () => ({ data: { label: 'prov', is_management_key: true } })
+  });
+  try {
+    const result = await testOpenRouterKey('sk-or-v1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    assert.equal(result.ok, false);
+    assert.match(result.message, /provisioning|management/i);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('testOpenRouterKey accepts a normal key response', async () => {
+  const { testOpenRouterKey } = require('../src/llm');
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({
+    ok: true,
+    json: async () => ({ data: { label: 'default', is_management_key: false, limit: null } })
+  });
+  try {
+    const result = await testOpenRouterKey('sk-or-v1-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    assert.equal(result.ok, true);
+    assert.match(result.message, /works/i);
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 test('formatProviderErrorMessage: maps a Gemini 404 to an actionable "model unavailable" message', () => {

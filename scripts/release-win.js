@@ -56,15 +56,15 @@ if (!releaseExists) {
     '--repo', 'Algo-Vision404/apperture',
     '--title', `apperture ${tag}`,
     '--notes', [
-      `Fix false “You’re on the latest version” when a newer release exists.`,
+      `Fix OpenRouter key save/wipe + add Test key button.`,
       '',
-      '- Update check now verifies against the live GitHub feed (no stale cache)',
-      '- Shows installed vs remote version when they disagree',
-      '- Clearer Download installer path when auto-download stalls',
+      '- Leaving API key fields blank no longer wipes a saved key when you click Done',
+      '- New **Test key** button verifies OpenRouter via /api/v1/auth/key (catches management keys)',
+      '- Strips hidden paste characters that can break sk-or-v1-… keys',
       '',
-      '**If Check still says you’re up to date on 0.1.14 or older:** download `apperture-win-x64.exe` once and run it — then future checks work.',
+      '**If Check for updates still says you’re up to date:** install once from this release.',
       '',
-      'Also in 0.1.14: clearer OpenRouter 401 / mic key guidance.'
+      'Then: Settings → AI → paste sk-or-v1-… → Test key → Done.'
     ].join('\n')
   ]);
 }

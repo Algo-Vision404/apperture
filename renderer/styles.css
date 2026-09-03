@@ -1375,6 +1375,20 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 .s-field span { width: 78px; color: var(--tx-mut); font-size: 12px; flex-shrink: 0; }
 .s-field input { flex: 1; padding: 8px 10px; border-radius: var(--r-8); border: 1px solid rgba(255,236,190,0.12); background: rgba(0,0,0,0.25); color: var(--tx-1); font-size: 13px; font-family: var(--font); outline: none; }
 .s-field input:focus { border-color: var(--accent); }
+.s-field-key-row input { min-width: 0; }
+.s-key-test {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border-radius: var(--r-8);
+  border: 1px solid rgba(var(--accent-rgb), 0.34);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent-ink);
+  font: 600 11px var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.s-key-test:hover { background: rgba(var(--accent-rgb), 0.18); }
+.s-key-test:disabled { opacity: 0.55; cursor: default; }
 .s-help { color: var(--tx-mut); font-size: 11px; line-height: 1.4; margin: 4px 0 2px 88px; }
 .s-select {
   width: 100%; padding: 8px 10px; border-radius: var(--r-8);

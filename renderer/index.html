@@ -159,12 +159,16 @@
           <button data-provider="azure">Azure AI</button>
         </div>
 
-        <label class="s-label">API keys <span class="s-hint">stored locally · never sent to apperture servers</span></label>
-        <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
-        <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" /></div>
-        <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
-        <div class="s-field"><span>OpenRouter</span><input id="key-openrouter" type="password" placeholder="sk-or-v1-... or OPENROUTER_API_KEY" autocomplete="off" /></div>
-        <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
+        <label class="s-label">API keys <span class="s-hint">stored locally · leave blank to keep a saved key</span></label>
+        <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" /></div>
+        <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" /></div>
+        <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false" /></div>
+        <div class="s-field s-field-key-row">
+          <span>OpenRouter</span>
+          <input id="key-openrouter" type="password" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false" />
+          <button type="button" class="s-key-test" id="test-openrouter-btn" title="Verify this key with OpenRouter">Test key</button>
+        </div>
+        <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" spellcheck="false" /></div>
 
         <button type="button" id="keys-advanced-toggle" class="s-advanced-toggle" aria-expanded="false">
           <span class="s-advanced-chev">▸</span> More providers &amp; endpoints

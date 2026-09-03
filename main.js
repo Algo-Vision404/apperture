@@ -579,6 +579,12 @@ async function runFeature(mode, userText) {
 // -------- IPC --------
 ipcMain.handle('settings:get', () => store.getSettings());
 ipcMain.handle('settings:set', (_e, patch) => { sttDisabled = false; return store.setSettings(patch); });
+ipcMain.handle('keys:test-openrouter', async (_e, rawKey) => {
+  const { testOpenRouterKey, normalizeApiKey } = require('./src/llm');
+  const settings = store.getSettings();
+  const key = normalizeApiKey(rawKey) || normalizeApiKey(settings.apiKeys && settings.apiKeys.openrouter);
+  return testOpenRouterKey(key);
+});
 ipcMain.handle('capture:toggle', () => {
   const targetState = !desiredCaptureState;
   desiredCaptureState = targetState;
