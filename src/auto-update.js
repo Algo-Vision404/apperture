@@ -4,6 +4,11 @@ const { formatUpdateUserMessage } = require('./update-messages');
 
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 12 * 1000;
+const GITHUB_OWNER = 'Algo-Vision404';
+const GITHUB_REPO = 'apperture';
+// Raw file — 200 OK, no GitHub asset-CDN redirect. 0.1.10 still uses baked GitHub
+// provider and cannot be patched; this feed is for 0.1.12+.
+const GENERIC_FEED_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/updates`;
 
 function createAutoUpdate(send) {
   const state = {
@@ -12,7 +17,8 @@ function createAutoUpdate(send) {
     availableVersion: null,
     percent: 0,
     message: '',
-    lastCheckedAt: null
+    lastCheckedAt: null,
+    downloadUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`
   };
 
   function emit(patch) {
@@ -57,6 +63,18 @@ function createAutoUpdate(send) {
     error: () => {}
   };
 
+  function useGenericFeed() {
+    autoUpdater.setFeedURL({ provider: 'generic', url: GENERIC_FEED_URL });
+  }
+  function useGithubFeed() {
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO
+    });
+  }
+  useGenericFeed();
+
   autoUpdater.on('checking-for-update', () => {
     emit({ phase: 'checking', message: 'Checking for updates…', lastCheckedAt: Date.now() });
   });
@@ -98,12 +116,22 @@ function createAutoUpdate(send) {
     return out;
   }
 
+  async function checkOnce() {
+    try {
+      useGenericFeed();
+      return await autoUpdater.checkForUpdates();
+    } catch (err) {
+      useGithubFeed();
+      return await autoUpdater.checkForUpdates();
+    }
+  }
+
   return {
     getState: snapshot,
     async check() {
       try {
         emit({ phase: 'checking', message: 'Checking for updates…', lastCheckedAt: Date.now() });
-        const result = await autoUpdater.checkForUpdates();
+        const result = await checkOnce();
         if (state.phase === 'checking') {
           const nextVersion = result && result.updateInfo && result.updateInfo.version;
           if (nextVersion) {
@@ -142,4 +170,4 @@ function createAutoUpdate(send) {
   };
 }
 
-module.exports = { createAutoUpdate };
+module.exports = { createAutoUpdate, GENERIC_FEED_URL };

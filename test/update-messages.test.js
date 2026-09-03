@@ -14,7 +14,7 @@ test('formatUpdateUserMessage hides raw updater codes and checksums', () => {
 test('formatUpdateUserMessage maps network and GitHub errors to plain English', () => {
   assert.match(
     formatUpdateUserMessage('error', 'HttpError: 404 Not Found "https://github.com/Algo-Vision404/apperture/releases/download/v0.1.8/latest.yml"'),
-    /wasn.t found on GitHub/i
+    /Download installer/i
   );
   assert.match(
     formatUpdateUserMessage('error', 'getaddrinfo ENOTFOUND github.com'),

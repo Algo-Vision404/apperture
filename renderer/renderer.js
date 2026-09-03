@@ -1891,6 +1891,15 @@
       installBtn.dataset.wired = '1';
       installBtn.addEventListener('click', () => { void apperture.updateInstall(); });
     }
+    const downloadBtn = document.getElementById('update-download-btn');
+    if (downloadBtn && !downloadBtn.dataset.wired) {
+      downloadBtn.dataset.wired = '1';
+      downloadBtn.addEventListener('click', () => {
+        const url = (updateUiState && updateUiState.downloadUrl)
+          || 'https://github.com/Algo-Vision404/apperture/releases/latest';
+        apperture.openPane(url);
+      });
+    }
     if (bannerAction && !bannerAction.dataset.wired) {
       bannerAction.dataset.wired = '1';
       bannerAction.addEventListener('click', () => { void apperture.updateInstall(); });

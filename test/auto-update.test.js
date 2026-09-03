@@ -53,6 +53,8 @@ test('auto-update module exists and only runs when packaged', () => {
   assert.match(src, /electron-updater/);
   assert.match(src, /app\.isPackaged/);
   assert.match(src, /disableDifferentialDownload = true/);
+  assert.match(src, /setFeedURL/);
+  assert.match(src, /raw\.githubusercontent\.com/);
 });
 
 test('main, preload, and renderer expose update IPC', () => {
@@ -68,6 +70,7 @@ test('main, preload, and renderer expose update IPC', () => {
   assert.match(renderer, /applyUpdateState/);
   assert.match(renderer, /result\.state/);
   assert.match(html, /id="update-last-checked"/);
+  assert.match(html, /id="update-download-btn"/);
 });
 
 test('auto-update check returns state for the Updates UI', () => {

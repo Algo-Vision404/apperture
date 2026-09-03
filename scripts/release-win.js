@@ -56,15 +56,16 @@ if (!releaseExists) {
     '--repo', 'Algo-Vision404/apperture',
     '--title', `apperture ${tag}`,
     '--notes', [
-      `Settings scroll and layout fixes.`,
+      `Fixes in-app updates for future versions, plus settings scroll/layout.`,
+      '',
+      '**If Check for updates still fails on 0.1.10:** download `apperture-win-x64.exe` once and run it.',
       '',
       '- Settings sections open at the top after drag / tab switch',
-      '- Bottom of Settings no longer gets clipped — scroll to see everything',
-      '- Window briefly grows while Settings is open so long tabs fit',
+      '- Bottom of Settings no longer gets clipped',
+      '- Window grows while Settings is open so long tabs fit',
+      '- Update checks use a public feed that does not depend on GitHub’s asset CDN',
       '',
-      'Installed apps can Check for updates and restart to apply.',
-      '',
-      '**Windows:** download `apperture-win-x64.exe` only if this is your first install.'
+      'Installed apps can Check for updates and restart to apply after this install.'
     ].join('\n')
   ]);
 }
@@ -75,5 +76,22 @@ run('gh', [
   '--clobber',
   ...assets
 ]);
+
+const releaseBase = `https://github.com/Algo-Vision404/apperture/releases/download/${tag}/`;
+const latestRaw = fs.readFileSync(path.join(dist, 'latest.yml'), 'utf8');
+const feed = latestRaw
+  .replace(/^(\s*url:\s*)apperture-win-x64\.exe/gm, `$1${releaseBase}apperture-win-x64.exe`)
+  .replace(/^path:\s*apperture-win-x64\.exe/m, `path: ${releaseBase}apperture-win-x64.exe`);
+const feedDir = path.join(root, 'updates');
+fs.mkdirSync(feedDir, { recursive: true });
+fs.writeFileSync(path.join(feedDir, 'latest.yml'), feed);
+try {
+  run('git', ['add', 'updates/latest.yml']);
+  run('git', ['commit', '-m', `Publish update feed for ${tag}`]);
+  try { run('git', ['push', 'github', 'HEAD:main']); } catch (_) {}
+  try { run('git', ['push', 'origin', 'HEAD:main']); } catch (_) {}
+} catch (err) {
+  console.warn('Could not push updates/latest.yml (commit may already exist):', err.message || err);
+}
 
 console.log(`Published ${tag} with auto-update metadata (latest.yml).`);

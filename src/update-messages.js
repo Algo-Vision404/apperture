@@ -18,8 +18,8 @@ function formatUpdateUserMessage(phase, rawMessage) {
   if (/sha512|checksum mismatch/i.test(msg)) {
     return 'The update download failed its integrity check. Try “Check for updates” again, or download the latest installer from GitHub.';
   }
-  if (/404|not found|latest\.yml|ENOENT/i.test(msg)) {
-    return 'Update info wasn’t found on GitHub yet. If a release was just published, wait a minute and try again.';
+  if (/404|not found|latest\.yml|ENOENT|ERR_UPDATER_CHANNEL_FILE_NOT_FOUND|ERR_UPDATER_LATEST_VERSION_NOT_FOUND/i.test(msg)) {
+    return 'Couldn’t reach the update list. Use “Download installer” below, or try Check again.';
   }
   if (/ENOTFOUND|ERR_INTERNET|network|timed out|ETIMEDOUT|ECONNRESET|getaddrinfo/i.test(msg)) {
     return 'Couldn’t reach GitHub to check for updates. Check your internet connection and try again.';
