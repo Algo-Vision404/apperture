@@ -33,6 +33,7 @@ const hasWinCert = process.env.WIN_SIGN === "1" && !!process.env.CSC_LINK;
 module.exports = {
   appId: "com.apperture.overlay",
   productName: "apperture",
+  copyright: "Copyright © apperture",
   asar: false,
   // Baked into app-update.yml so installed apps know where to check. Builds do
   // not upload to GitHub unless you pass electron-builder --publish (never in dist:*).
@@ -74,7 +75,9 @@ module.exports = {
   win: {
     target: [{ target: "nsis", arch: ["x64"] }],
     artifactName: "${productName}-win-${arch}.${ext}",
-    signAndEditExecutable: hasWinCert,
+    icon: "build-resources/icon.ico",
+  // Embed honest apperture metadata/icons; only Authenticode-sign when a cert is set.
+    signAndEditExecutable: true,
     signExecutable: hasWinCert,
     verifyUpdateCodeSignature: hasWinCert,
   },
@@ -91,6 +94,8 @@ module.exports = {
     menuCategory: "apperture",
     uninstallDisplayName: "apperture",
     guid: "7f3c8e2a-4b1d-5a9e-8c6d-0e1f2a3b4c5d",
+    installerIcon: "build-resources/icon.ico",
+    uninstallerIcon: "build-resources/icon.ico",
     differentialPackage: false,
     include: "build-resources/installer.nsh",
   },

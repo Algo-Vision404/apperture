@@ -31,7 +31,7 @@ test('Windows signing is opt-in so unsigned NSIS installers are not mutated', ()
     delete process.env.WIN_SIGN;
     delete process.env.CSC_LINK;
     const unsigned = require('../electron-builder.cjs');
-    assert.equal(unsigned.win.signAndEditExecutable, false);
+    assert.equal(unsigned.win.signAndEditExecutable, true);
     assert.equal(unsigned.win.signExecutable, false);
     assert.equal(unsigned.win.verifyUpdateCodeSignature, false);
 

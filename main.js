@@ -25,6 +25,7 @@ const { requireWhisperModel } = require('./src/whisper-model-catalog');
 const { locateWhisperRuntime } = require('./src/whisper-runtime');
 const { buildCaptureProtectionStatus, applyCaptureProtection, wireCaptureProtectionLifecycle, getWindowsBuild } = require('./src/capture-protection');
 const { createAutoUpdate } = require('./src/auto-update');
+const APP_WIN_NAME = 'apperture';
 
 let win = null;
 // Which global shortcuts apperture actually holds. `globalShortcut.register` returns
@@ -259,11 +260,11 @@ function createWindow() {
     }, 500);
   });
 
-  win.setTitle('Microsoft Edge Update'); // set before load
+  win.setTitle(APP_WIN_NAME);
 
   win.webContents.on('did-finish-load', () => {
     win.showInactive();
-    win.setTitle('Microsoft Edge Update');
+    win.setTitle(APP_WIN_NAME);
     const cap = buildCaptureProtectionStatus(CAPTURE_PROTECT_OPTS);
     if (cap.level !== 'protected') {
       send('status', { message: cap.message });
@@ -812,7 +813,7 @@ function createPermissionsWindow() {
     }
   });
   wireCaptureProtectionLifecycle(permWin, CAPTURE_PROTECT_OPTS);
-  permWin.setTitle('Microsoft Edge Update');
+  permWin.setTitle(APP_WIN_NAME);
   permWin.loadFile(path.join(__dirname, 'renderer', 'permissions.html'));
   permWin.webContents.on('did-finish-load', () => permWin.show());
 }
@@ -863,9 +864,9 @@ function launchApp() {
 
 // -------- lifecycle --------
 app.whenReady().then(async () => {
-  app.setName('MicrosoftEdgeUpdate');
+  app.setName(APP_WIN_NAME);
   if (isWindows) {
-    process.title = 'MicrosoftEdgeUpdate';
+    process.title = APP_WIN_NAME;
   }
 
   if (isMac) {

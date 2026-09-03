@@ -22,6 +22,7 @@ function run(cmd, args, opts = {}) {
 }
 
 console.log(`Building apperture ${version} for Windows…`);
+run('node', ['scripts/generate-app-icon.js']);
 run('npm', ['run', 'dist:win'], {
   env: {
     ...process.env,

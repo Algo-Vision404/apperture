@@ -58,7 +58,7 @@ Option A is the easiest on both platforms. Use Option B if you'd rather run from
 
 Go to the [**Releases**](../../releases) page, then choose your platform:
 
-- **Windows 10/11 (x64):** download **`apperture-win-x64.exe`**, run it, and launch apperture from the Start menu. The installer is unsigned, so Windows SmartScreen may show an **Unknown publisher** warning.
+- **Windows 10/11 (x64):** download **`apperture-win-x64.exe`**, run it, and launch apperture from the Start menu. Because the installer is not yet code-signed, SmartScreen may say the publisher is unknown — click **More info** → **Run anyway**. apperture is open source on GitHub; it does not impersonate other apps.
 - **macOS (Apple silicon):** download **`apperture-…-arm64-mac.zip`**, unzip it, drag **`apperture.app`** into **Applications**, and open it.
 
 ### Option B — Run from source (macOS or Windows)
