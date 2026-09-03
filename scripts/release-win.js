@@ -56,11 +56,15 @@ if (!releaseExists) {
     '--repo', 'Algo-Vision404/apperture',
     '--title', `apperture ${tag}`,
     '--notes', [
-      `Desktop build with GitHub auto-update.`,
+      `Settings scroll and layout fixes.`,
       '',
-      'Installed apps check for updates automatically and restart to apply.',
+      '- Settings sections open at the top after drag / tab switch',
+      '- Bottom of Settings no longer gets clipped — scroll to see everything',
+      '- Window briefly grows while Settings is open so long tabs fit',
       '',
-      '**Windows:** download `apperture-win-x64.exe` (first install only).'
+      'Installed apps can Check for updates and restart to apply.',
+      '',
+      '**Windows:** download `apperture-win-x64.exe` only if this is your first install.'
     ].join('\n')
   ]);
 }
