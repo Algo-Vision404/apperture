@@ -1,8 +1,8 @@
-version: 0.1.14
+version: 0.1.15
 files:
-  - url: https://github.com/Algo-Vision404/apperture/releases/download/v0.1.14/apperture-win-x64.exe
-    sha512: TLMNw7GAVs4LWyxL9YE3vFt/AerIpJDfLNAanNwE4agp2YjCftt+TmI4/sxDPyGsp1rrkqVmGGWTOnzumcymWw==
-path: https://github.com/Algo-Vision404/apperture/releases/download/v0.1.14/apperture-win-x64.exe
-sha512: TLMNw7GAVs4LWyxL9YE3vFt/AerIpJDfLNAanNwE4agp2YjCftt+TmI4/sxDPyGsp1rrkqVmGGWTOnzumcymWw==
-size: 79741278
-releaseDate: '2026-09-03T02:04:46.864Z'
+  - url: https://github.com/Algo-Vision404/apperture/releases/download/v0.1.15/apperture-win-x64.exe
+    sha512: WcpSuFKprQ9UIQ8K5ctQ9/KrxvUMY4y48HdMvmss5NyVW93uEwkqhRWcdsvD+uUtjQR07I3mYirWf3IzZnYc5Q==
+path: https://github.com/Algo-Vision404/apperture/releases/download/v0.1.15/apperture-win-x64.exe
+sha512: WcpSuFKprQ9UIQ8K5ctQ9/KrxvUMY4y48HdMvmss5NyVW93uEwkqhRWcdsvD+uUtjQR07I3mYirWf3IzZnYc5Q==
+size: 79743056
+releaseDate: '2026-09-03T02:11:23.528Z'
