@@ -56,16 +56,14 @@ if (!releaseExists) {
     '--repo', 'Algo-Vision404/apperture',
     '--title', `apperture ${tag}`,
     '--notes', [
-      `Fixes in-app updates for future versions, plus settings scroll/layout.`,
+      `New Open Iris app icon for taskbar, Start menu, and installer.`,
       '',
-      '**If Check for updates still fails on 0.1.10:** download `apperture-win-x64.exe` once and run it.',
+      '- Redesigned gold squircle icon matching the in-app logo',
+      '- Crisp multi-size Windows icon (16–256px)',
       '',
-      '- Settings sections open at the top after drag / tab switch',
-      '- Bottom of Settings no longer gets clipped',
-      '- Window grows while Settings is open so long tabs fit',
-      '- Update checks use a public feed that does not depend on GitHub’s asset CDN',
+      '**If you are still on 0.1.10:** Check for updates will not work — download `apperture-win-x64.exe` once and run it.',
       '',
-      'Installed apps can Check for updates and restart to apply after this install.'
+      'On 0.1.12+: open Settings → Updates → Check for updates, then restart to apply.'
     ].join('\n')
   ]);
 }
