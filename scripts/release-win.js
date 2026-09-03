@@ -56,16 +56,15 @@ if (!releaseExists) {
     '--repo', 'Algo-Vision404/apperture',
     '--title', `apperture ${tag}`,
     '--notes', [
-      `Clearer fix for “401 User not found” and mic transcription failures.`,
+      `Fix false “You’re on the latest version” when a newer release exists.`,
       '',
-      '- OpenRouter 401 now explains invalid/expired/wrong key types (needs sk-or-v1-…)',
-      '- Warns when an OpenAI key is pasted while Provider is OpenRouter (and vice versa)',
-      '- Mic captions: clearer guidance to add a free Groq key under Settings → Audio',
-      '- Strips Bearer/quotes from pasted API keys',
+      '- Update check now verifies against the live GitHub feed (no stale cache)',
+      '- Shows installed vs remote version when they disagree',
+      '- Clearer Download installer path when auto-download stalls',
       '',
-      '**If Check for updates still fails on 0.1.10:** download `apperture-win-x64.exe` once and run it.',
+      '**If Check still says you’re up to date on 0.1.14 or older:** download `apperture-win-x64.exe` once and run it — then future checks work.',
       '',
-      'On 0.1.12+: Settings → Updates → Check for updates, then restart.'
+      'Also in 0.1.14: clearer OpenRouter 401 / mic key guidance.'
     ].join('\n')
   ]);
 }

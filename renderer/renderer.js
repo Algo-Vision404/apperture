@@ -1807,7 +1807,16 @@
     if (currentVersion) currentVersion.textContent = updateUiState.version || '—';
     const statusMessage = updateUiState.message || 'apperture checks GitHub for updates automatically.';
     if (statusText) {
-      statusText.textContent = statusMessage;
+      let text = statusMessage;
+      if (
+        updateUiState.remoteVersion &&
+        updateUiState.version &&
+        updateUiState.remoteVersion !== updateUiState.version &&
+        updateUiState.phase === 'none'
+      ) {
+        text = `Installed ${updateUiState.version}. GitHub has ${updateUiState.remoteVersion} — click Download installer if Check keeps saying you’re up to date.`;
+      }
+      statusText.textContent = text;
       statusText.classList.toggle('update-status-error', updateUiState.phase === 'error');
     }
     if (lastCheckedEl) {

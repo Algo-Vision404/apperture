@@ -11,7 +11,7 @@ function formatUpdateUserMessage(phase, rawMessage) {
   const msg = String(rawMessage || '').trim();
   if (!msg) return defaults[phase] || defaults.idle;
 
-  if (/^(Checking for updates|You.re on the latest|Update .* is (downloading|ready)|Downloading update)/i.test(msg)) {
+  if (/^(Checking for updates|You.re on the latest|Update .* is (downloading|ready|available)|Downloading update|Updater reported no update)/i.test(msg)) {
     return msg;
   }
 

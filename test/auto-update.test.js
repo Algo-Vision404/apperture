@@ -73,10 +73,20 @@ test('main, preload, and renderer expose update IPC', () => {
   assert.match(html, /id="update-download-btn"/);
 });
 
-test('auto-update check returns state for the Updates UI', () => {
+test('auto-update check reconciles against the public feed version', () => {
   const src = fs.readFileSync(path.join(__dirname, '../src/auto-update.js'), 'utf8');
   assert.match(src, /return \{ ok: true, state: snapshot\(\) \}/);
   assert.match(src, /function snapshot\(\)/);
+  assert.match(src, /fetchRemoteFeedVersion/);
+  assert.match(src, /semver\.gt/);
+  assert.match(src, /isUpdateAvailable/);
+});
+
+test('parseFeedVersion reads latest.yml version lines', () => {
+  const { parseFeedVersion } = require('../src/auto-update');
+  assert.equal(parseFeedVersion('version: 0.1.14\npath: x'), '0.1.14');
+  assert.equal(parseFeedVersion('version: "0.2.0"\n'), '0.2.0');
+  assert.equal(parseFeedVersion('nope'), null);
 });
 
 test('release script uploads latest.yml with the installer', () => {
