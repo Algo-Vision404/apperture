@@ -5,8 +5,10 @@ const { pcmToWav } = require('./wav');
 const {
   formatProviderErrorMessage,
   isQuotaError,
+  isAuthError,
   CURRENT_GEMINI_DEFAULT,
   resolveApiKey,
+  normalizeApiKey,
   OPENROUTER_HEADERS
 } = require('./llm');
 
@@ -116,14 +118,17 @@ function createSTT(settings) {
   const selectedProvider = settings.sttProvider || 'auto';
   const vocabPrompt = buildVocabPrompt(settings);
   const chain = [];
-  if ((selectedProvider === 'auto' || selectedProvider === 'openai') && keys.openai) {
-    chain.push({ p: 'openai', fn: (wav) => transcribeOpenAI(keys.openai, wav, settings.sttModel, undefined, vocabPrompt) });
+  const openaiKey = normalizeApiKey(keys.openai);
+  const groqKey = normalizeApiKey(keys.groq);
+  const geminiKey = normalizeApiKey(keys.gemini);
+  if ((selectedProvider === 'auto' || selectedProvider === 'openai') && openaiKey) {
+    chain.push({ p: 'openai', fn: (wav) => transcribeOpenAI(openaiKey, wav, settings.sttModel, undefined, vocabPrompt) });
   }
-  if ((selectedProvider === 'auto' || selectedProvider === 'groq') && keys.groq) {
-    chain.push({ p: 'groq', fn: (wav) => transcribeOpenAI(keys.groq, wav, 'whisper-large-v3-turbo', 'https://api.groq.com/openai/v1', vocabPrompt) });
+  if ((selectedProvider === 'auto' || selectedProvider === 'groq') && groqKey) {
+    chain.push({ p: 'groq', fn: (wav) => transcribeOpenAI(groqKey, wav, 'whisper-large-v3-turbo', 'https://api.groq.com/openai/v1', vocabPrompt) });
   }
-  if ((selectedProvider === 'auto' || selectedProvider === 'gemini') && keys.gemini) {
-    chain.push({ p: 'gemini', fn: (wav) => transcribeGemini(keys.gemini, wav) });
+  if ((selectedProvider === 'auto' || selectedProvider === 'gemini') && geminiKey) {
+    chain.push({ p: 'gemini', fn: (wav) => transcribeGemini(geminiKey, wav) });
   }
   const openrouterKey = resolveApiKey('openrouter', keys);
   // OpenRouter STT (Nemotron ASR / Whisper) needs account audio credits — keep it
@@ -138,7 +143,7 @@ function createSTT(settings) {
       )
     });
   }
-  if (keys.openai && chain.length > 1) {
+  if (openaiKey && chain.length > 1) {
     const idx = chain.findIndex((c) => c.p === 'openai');
     if (idx > 0) chain.unshift(chain.splice(idx, 1)[0]);
   }
@@ -172,13 +177,15 @@ function createSTT(settings) {
           return { text, provider: c.p };
         } catch (e) {
           const quota = isQuotaError(e) || /requires at least \$|credits|402/i.test(String((e && e.message) || ''));
+          const auth = isAuthError(e);
           const message = formatProviderErrorMessage(e, c.p);
-          lastErr = { status: e && e.status, code: e && e.code, message, provider: c.p };
+          lastErr = { status: e && e.status, code: e && e.code, message, provider: c.p, auth: !!auth };
+          // Auth failures on one provider should not burn the rest of the chain.
           if (quota) {
             lastProvider = c.p;
             disabledUntil = now + 30000;
-            continue;
           }
+          continue;
         }
       }
       return { text: '', error: lastErr };

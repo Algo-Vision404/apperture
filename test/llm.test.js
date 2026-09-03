@@ -166,6 +166,43 @@ function geminiApiError({ status, body }) {
   return err;
 }
 
+test('formatProviderErrorMessage: OpenRouter 401 User not found becomes actionable key help', () => {
+  const error = new Error('401 User not found');
+  error.status = 401;
+  const message = formatProviderErrorMessage(error, 'openrouter');
+  assert.match(message, /OpenRouter rejected this API key/);
+  assert.match(message, /sk-or-v1/);
+  assert.match(message, /openrouter\.ai\/settings\/keys/);
+  assert.doesNotMatch(message, /^401 User not found$/);
+});
+
+test('formatProviderErrorMessage: OpenAI 401 becomes provider-specific key help', () => {
+  const error = new Error('Incorrect API key provided');
+  error.status = 401;
+  const message = formatProviderErrorMessage(error, 'openai');
+  assert.match(message, /OpenAI rejected this API key/);
+  assert.match(message, /Settings/);
+});
+
+test('createLLM: rejects an OpenAI-shaped key when Provider is OpenRouter', () => {
+  const llm = createLLM({
+    provider: 'openrouter',
+    smart: false,
+    apiKeys: { openrouter: 'sk-proj-not-an-openrouter-key' },
+    models: { openrouter: { fast: 'google/gemma-4-31b-it:free', smart: 'minimax/minimax-m2.7:free' } }
+  });
+  assert.equal(llm.ready, false);
+  assert.match(llm.configurationError, /looks like OpenAI/);
+  assert.match(llm.configurationError, /OpenRouter/);
+});
+
+test('resolveApiKey: strips Bearer prefix and quotes from pasted keys', () => {
+  assert.equal(
+    resolveApiKey('openrouter', { openrouter: 'Bearer "sk-or-v1-abc"' }),
+    'sk-or-v1-abc'
+  );
+});
+
 test('formatProviderErrorMessage: maps a Gemini 404 to an actionable "model unavailable" message', () => {
   const error = geminiApiError({
     status: 404,
@@ -307,7 +344,7 @@ test('routes OpenRouter through openrouter.ai with free-router fallbacks', async
   assert.equal(capturedClientOptions.apiKey, 'sk-or-v1-test');
   assert.equal(capturedClientOptions.baseURL, OPENROUTER_BASE_URL);
   assert.equal(capturedClientOptions.defaultHeaders['X-Title'], 'apperture');
-  assert.equal(capturedClientOptions.defaultHeaders['HTTP-Referer'], 'https://github.com/Blueturboguy07/apperture');
+  assert.equal(capturedClientOptions.defaultHeaders['HTTP-Referer'], 'https://github.com/Algo-Vision404/apperture');
   assert.equal(capturedCompletionRequest.model, OPENROUTER_DEFAULT_MODEL);
   assert.equal(capturedCompletionRequest.stream, true);
   assert.equal(capturedCompletionRequest.tool_choice, 'none');

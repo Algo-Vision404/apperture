@@ -56,14 +56,16 @@ if (!releaseExists) {
     '--repo', 'Algo-Vision404/apperture',
     '--title', `apperture ${tag}`,
     '--notes', [
-      `New Open Iris app icon for taskbar, Start menu, and installer.`,
+      `Clearer fix for “401 User not found” and mic transcription failures.`,
       '',
-      '- Redesigned gold squircle icon matching the in-app logo',
-      '- Crisp multi-size Windows icon (16–256px)',
+      '- OpenRouter 401 now explains invalid/expired/wrong key types (needs sk-or-v1-…)',
+      '- Warns when an OpenAI key is pasted while Provider is OpenRouter (and vice versa)',
+      '- Mic captions: clearer guidance to add a free Groq key under Settings → Audio',
+      '- Strips Bearer/quotes from pasted API keys',
       '',
-      '**If you are still on 0.1.10:** Check for updates will not work — download `apperture-win-x64.exe` once and run it.',
+      '**If Check for updates still fails on 0.1.10:** download `apperture-win-x64.exe` once and run it.',
       '',
-      'On 0.1.12+: open Settings → Updates → Check for updates, then restart to apply.'
+      'On 0.1.12+: Settings → Updates → Check for updates, then restart.'
     ].join('\n')
   ]);
 }

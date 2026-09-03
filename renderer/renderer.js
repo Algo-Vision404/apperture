@@ -2465,30 +2465,35 @@
   apperture.on('whisper:models-changed', () => refreshWhisperModels());
 
   async function saveSettings() {
-    // Keys
-    settings.apiKeys.openai = $('#key-openai').value.trim();
-    settings.apiKeys.anthropic = $('#key-anthropic').value.trim();
-    settings.apiKeys.gemini = $('#key-gemini').value.trim();
-    settings.apiKeys.openrouter = $('#key-openrouter').value.trim();
-    settings.apiKeys.deepgram = $('#key-deepgram').value.trim();
-    settings.apiKeys.custom = $('#key-custom').value.trim();
+    // Keys — normalize paste artifacts (Bearer / quotes / whitespace)
+    function cleanKey(v) {
+      let k = String(v || '').trim();
+      if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) k = k.slice(1, -1).trim();
+      return k.replace(/^Bearer\s+/i, '').trim();
+    }
+    settings.apiKeys.openai = cleanKey($('#key-openai').value);
+    settings.apiKeys.anthropic = cleanKey($('#key-anthropic').value);
+    settings.apiKeys.gemini = cleanKey($('#key-gemini').value);
+    settings.apiKeys.openrouter = cleanKey($('#key-openrouter').value);
+    settings.apiKeys.deepgram = cleanKey($('#key-deepgram').value);
+    settings.apiKeys.custom = cleanKey($('#key-custom').value);
     settings.baseUrl = $('#base-url').value.trim();
     settings.apiKeys.ollama = $('#key-ollama').value.trim();
     syncKeysFromSttKeyFields();
-    settings.apiKeys.groq = $('#key-groq').value.trim();
-    settings.apiKeys.minimax = $('#key-minimax').value.trim();
-    settings.apiKeys.azure = $('#key-azure').value.trim();
+    settings.apiKeys.groq = cleanKey($('#key-groq').value);
+    settings.apiKeys.minimax = cleanKey($('#key-minimax').value);
+    settings.apiKeys.azure = cleanKey($('#key-azure').value);
     // Prefer Audio-tab values when present (same keys, easier to find).
     const sttGroq = document.getElementById('stt-key-groq');
     const sttOpenAI = document.getElementById('stt-key-openai');
     const sttGemini = document.getElementById('stt-key-gemini');
     const sttDeepgram = document.getElementById('stt-key-deepgram');
     const sttOpenRouter = document.getElementById('stt-key-openrouter');
-    if (sttGroq && sttGroq.value.trim()) settings.apiKeys.groq = sttGroq.value.trim();
-    if (sttOpenAI && sttOpenAI.value.trim()) settings.apiKeys.openai = sttOpenAI.value.trim();
-    if (sttGemini && sttGemini.value.trim()) settings.apiKeys.gemini = sttGemini.value.trim();
-    if (sttDeepgram && sttDeepgram.value.trim()) settings.apiKeys.deepgram = sttDeepgram.value.trim();
-    if (sttOpenRouter && sttOpenRouter.value.trim()) settings.apiKeys.openrouter = sttOpenRouter.value.trim();
+    if (sttGroq && sttGroq.value.trim()) settings.apiKeys.groq = cleanKey(sttGroq.value);
+    if (sttOpenAI && sttOpenAI.value.trim()) settings.apiKeys.openai = cleanKey(sttOpenAI.value);
+    if (sttGemini && sttGemini.value.trim()) settings.apiKeys.gemini = cleanKey(sttGemini.value);
+    if (sttDeepgram && sttDeepgram.value.trim()) settings.apiKeys.deepgram = cleanKey(sttDeepgram.value);
+    if (sttOpenRouter && sttOpenRouter.value.trim()) settings.apiKeys.openrouter = cleanKey(sttOpenRouter.value);
     settings.azureEndpoint = $('#azure-endpoint').value.trim();
     if (!settings.models[settings.provider]) settings.models[settings.provider] = {};
     settings.models[settings.provider].fast = $('#model-fast').value.trim();
@@ -2525,7 +2530,24 @@
     settings.questionsToAsk = $('#questions-to-ask').value.trim();
     try {
       settings = await apperture.settingsSet(settings);
-      $('#s-status').textContent = statusText();
+      // Reflect cleaned keys back into the inputs.
+      $('#key-openai').value = settings.apiKeys.openai || '';
+      $('#key-anthropic').value = settings.apiKeys.anthropic || '';
+      $('#key-gemini').value = settings.apiKeys.gemini || '';
+      $('#key-openrouter').value = settings.apiKeys.openrouter || '';
+      $('#key-groq').value = settings.apiKeys.groq || '';
+      syncSttKeyFieldsFromKeys();
+      let status = statusText();
+      const orKey = settings.apiKeys.openrouter || '';
+      const oaKey = settings.apiKeys.openai || '';
+      if (settings.provider === 'openrouter' && oaKey && !orKey) {
+        status = 'Provider is OpenRouter, but only an OpenAI key is filled. Paste an sk-or-v1-… key in the OpenRouter field (or switch Provider to OpenAI).';
+      } else if (settings.provider === 'openrouter' && orKey && /^sk-/.test(orKey) && !/^sk-or-/i.test(orKey)) {
+        status = 'OpenRouter needs an sk-or-v1-… key from openrouter.ai/settings/keys — an OpenAI sk-… key will return “401 User not found”.';
+      } else if (!(settings.apiKeys.groq || settings.apiKeys.openai || settings.apiKeys.gemini || settings.apiKeys.deepgram) && settings.apiKeys.openrouter) {
+        status = status + ' · For free mic captions, also add a Groq key under Audio';
+      }
+      $('#s-status').textContent = status;
       updatePrepStatus();
       syncSmartToggleUi();
       syncStealthUi();

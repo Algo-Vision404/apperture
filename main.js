@@ -291,7 +291,12 @@ async function flushChannel(channel) {
     const settings = store.getSettings();
     const stt = createSTT(settings);
     if (!stt.available) {
-      if (!sttDisabled) { sttDisabled = true; send('status', { message: 'No transcription key set. Add an OpenAI (Whisper), Deepgram, or Gemini key in Settings to enable listening. Screen/LeetCode features work without it.' }); }
+      if (!sttDisabled) {
+        sttDisabled = true;
+        send('status', {
+          message: 'No speech key for mic captions. Add a free Groq key (gsk_…) under Settings → Audio, or OpenAI/Gemini/Deepgram. An OpenRouter chat key alone is not enough unless you also have OpenRouter audio credits.'
+        });
+      }
       return;
     }
     const res = await stt.transcribe(pcm);
@@ -326,10 +331,14 @@ function handleSttError(err, settings) {
   });
   if (sttDisabled) return;
   const isQuota = err.status === 429 || err.code === 'RESOURCE_EXHAUSTED' || (err.message && err.message.includes('Quota exceeded'));
-  const noAccess = err.status === 403 || err.status === 401 || err.code === 'model_not_found' || isQuota;
+  const noAccess = err.auth || err.status === 403 || err.status === 401 || err.code === 'model_not_found' || isQuota;
   sttDisabled = true; // stop hammering the API every few seconds
   if (noAccess) {
-    send('status', { message: `Transcription off: your ${err.provider} key was rejected or hit a quota limit. Update your key in Settings to resume.` });
+    const detail = err.message && !/^Transcription off/i.test(err.message) ? err.message : '';
+    send('status', {
+      message: detail ||
+        `Transcription off: your ${err.provider} key was rejected or hit a quota limit. Update Settings → Audio (Groq is free for mic) and click Done.`
+    });
   } else {
     send('status', { message: 'Transcription error (' + err.provider + '): ' + err.message });
   }

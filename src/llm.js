@@ -23,7 +23,7 @@ const OPENROUTER_SMART_FALLBACK_MODELS = [
   'openrouter/free'
 ];
 const OPENROUTER_HEADERS = {
-  'HTTP-Referer': 'https://github.com/Blueturboguy07/apperture',
+  'HTTP-Referer': 'https://github.com/Algo-Vision404/apperture',
   'X-Title': 'apperture'
 };
 // Older apperture builds defaulted to Nvidia Ultra free, which is frequently at
@@ -79,16 +79,50 @@ const PROVIDER_LABELS = {
   openrouter: 'OpenRouter'
 };
 
+// Paste hygiene: users often copy "Bearer …", quotes, or trailing newlines.
+function normalizeApiKey(raw) {
+  let key = typeof raw === 'string' ? raw.trim() : '';
+  if (!key) return '';
+  key = key.replace(/^Bearer\s+/i, '').trim();
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1).trim();
+  }
+  key = key.replace(/^Bearer\s+/i, '').trim();
+  return key;
+}
+
 function resolveApiKey(provider, keys) {
-  const fromSettings = typeof keys[provider] === 'string' ? keys[provider].trim() : '';
+  const fromSettings = normalizeApiKey(keys && keys[provider]);
   if (fromSettings) return fromSettings;
   if (provider === OPENROUTER_PROVIDER) {
-    const fromEnv = typeof process.env.OPENROUTER_API_KEY === 'string'
-      ? process.env.OPENROUTER_API_KEY.trim()
-      : '';
-    return fromEnv;
+    return normalizeApiKey(process.env.OPENROUTER_API_KEY);
   }
   return '';
+}
+
+function looksLikeOpenRouterKey(key) {
+  return /^sk-or-/i.test(String(key || '').trim());
+}
+
+function looksLikeOpenAIKey(key) {
+  const k = String(key || '').trim();
+  return /^sk-/.test(k) && !looksLikeOpenRouterKey(k);
+}
+
+function looksLikeGroqKey(key) {
+  return /^gsk_/i.test(String(key || '').trim());
+}
+
+function isAuthError(error) {
+  const status = error && (error.status || error.statusCode || error.response?.status);
+  const code = error && (error.code || error.error?.code);
+  const rawMessage = (error && (error.message || String(error))) || '';
+  const text = `${rawMessage} ${status || ''} ${code || ''}`.toLowerCase();
+  return status === 401 || status === 403 || code === 401 || code === 403 ||
+    /unauthorized|invalid.?api.?key|incorrect.?api.?key|authentication|user not found|key.?expired|permission.?denied|forbidden/i.test(text);
 }
 
 function normalizeProviderName(provider) {
@@ -152,12 +186,43 @@ function formatProviderErrorMessage(error, provider, model) {
     return `${label} free-tier quota exhausted (429 Too Many Requests).${waitHint} and try again, or add billing to your ${label} account. You can also switch providers or models in Settings.`;
   }
 
+  if (isAuthError(error)) {
+    if (provider === OPENROUTER_PROVIDER || /user not found/i.test(rawMessage)) {
+      return 'OpenRouter rejected this API key (401). Create a new key at openrouter.ai/settings/keys — use a normal API key starting with sk-or-v1-… (not a provisioning/management key), paste it under Settings → AI → OpenRouter, click Done, then try again. Mic captions need Groq/OpenAI/Gemini (or OpenRouter credits) under Settings → Audio.';
+    }
+    if (provider === 'openai' || provider === 'groq' || provider === 'minimax' || provider === 'azure') {
+      return `${label} rejected this API key (${error.status || 401}). Open Settings → AI, paste a valid ${label} key for the selected provider, click Done, then try again.`;
+    }
+    return `${label} rejected this API key (${error.status || 401}). Check the key under Settings → AI for the selected provider, click Done, then try again.`;
+  }
+
   if (isNotFoundError(error)) {
     const modelHint = model ? ` "${model}"` : '';
     return `${label} model${modelHint} is unavailable (404) — it may have been renamed, retired by the provider, or misspelled. Open Settings and pick a current model for ${label} (or clear the field to use apperture's default), then try again.`;
   }
 
   return rawMessage || 'Unknown LLM error.';
+}
+
+function keyShapeHint(provider, apiKey) {
+  const key = normalizeApiKey(apiKey);
+  if (!key) return '';
+  if (provider === OPENROUTER_PROVIDER && looksLikeOpenAIKey(key)) {
+    return 'That key looks like OpenAI (sk-…), but Provider is OpenRouter. Paste an sk-or-v1-… key from openrouter.ai/settings/keys, or switch Provider to OpenAI.';
+  }
+  if (provider === 'openai' && looksLikeOpenRouterKey(key)) {
+    return 'That key looks like OpenRouter (sk-or-…). Switch Provider to OpenRouter, or paste an OpenAI sk-… key instead.';
+  }
+  if (provider === 'openai' && looksLikeGroqKey(key)) {
+    return 'That key looks like Groq (gsk_…). Switch Provider to Groq, or paste an OpenAI sk-… key instead.';
+  }
+  if (provider === 'groq' && !looksLikeGroqKey(key) && (looksLikeOpenAIKey(key) || looksLikeOpenRouterKey(key))) {
+    return 'That key does not look like Groq. Groq keys start with gsk_ — get one at console.groq.com, or switch Provider to match the key you pasted.';
+  }
+  if (provider === OPENROUTER_PROVIDER && !looksLikeOpenRouterKey(key) && key.length > 12) {
+    return 'OpenRouter keys usually start with sk-or-v1-. Double-check you pasted a normal API key (not a provisioning key) from openrouter.ai/settings/keys.';
+  }
+  return '';
 }
 
 function sanitizeTurns(turns) {
@@ -480,6 +545,10 @@ function createLLM(settings) {
     configurationError = provider === OPENROUTER_PROVIDER
       ? 'Add your OpenRouter API key in Settings, or set OPENROUTER_API_KEY in the environment.'
       : `Add your ${provider} API key in Settings.`;
+  } else if (!configurationError) {
+    // Catch cross-provider pastes before they become a cryptic upstream 401.
+    const shapeHint = keyShapeHint(provider, apiKey);
+    if (shapeHint) configurationError = shapeHint;
   }
 
   // Azure needs a second credential: the resource endpoint.
@@ -544,7 +613,10 @@ module.exports = {
   createLLM,
   formatProviderErrorMessage,
   isQuotaError,
+  isAuthError,
   isUpstreamOverloadError,
+  normalizeApiKey,
+  keyShapeHint,
   CURRENT_GEMINI_DEFAULT,
   OPENROUTER_BASE_URL,
   OPENROUTER_DEFAULT_MODEL,
