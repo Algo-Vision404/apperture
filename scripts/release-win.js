@@ -80,7 +80,7 @@ run('gh', [
 const releaseBase = `https://github.com/Algo-Vision404/apperture/releases/download/${tag}/`;
 const latestRaw = fs.readFileSync(path.join(dist, 'latest.yml'), 'utf8');
 const feed = latestRaw
-  .replace(/^(\s*url:\s*)apperture-win-x64\.exe/gm, `$1${releaseBase}apperture-win-x64.exe`)
+  .replace(/url:\s*apperture-win-x64\.exe/g, `url: ${releaseBase}apperture-win-x64.exe`)
   .replace(/^path:\s*apperture-win-x64\.exe/m, `path: ${releaseBase}apperture-win-x64.exe`);
 const feedDir = path.join(root, 'updates');
 fs.mkdirSync(feedDir, { recursive: true });
