@@ -1,6 +1,6 @@
 version: 0.1.12
 files:
-  - url: apperture-win-x64.exe
+  - url: https://github.com/Algo-Vision404/apperture/releases/download/v0.1.12/apperture-win-x64.exe
     sha512: Q1lWgjzj23jQPy38as4N2ULgPlWQ7WAlZTCsSHpAi1ZS6gD6CnIvuLGn6lSqVHha64pzxsE1BE2S/F0w9WDncA==
 path: https://github.com/Algo-Vision404/apperture/releases/download/v0.1.12/apperture-win-x64.exe
 sha512: Q1lWgjzj23jQPy38as4N2ULgPlWQ7WAlZTCsSHpAi1ZS6gD6CnIvuLGn6lSqVHha64pzxsE1BE2S/F0w9WDncA==
