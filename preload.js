@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('apperture', {
   dragStart: (screenX, screenY) => ipcRenderer.send('window:drag-start', { screenX, screenY }),
   dragMove: (screenX, screenY) => ipcRenderer.send('window:drag-move', { screenX, screenY }),
   dragEnd: () => ipcRenderer.send('window:drag-end'),
+  ensureSettingsSpace: () => ipcRenderer.invoke('window:ensure-settings-space'),
+  restoreAfterSettings: () => ipcRenderer.invoke('window:restore-after-settings'),
   clearTranscript: () => ipcRenderer.invoke('transcript:clear'),
   openPane: (url) => ipcRenderer.send('open-pane', url),
   appLinkState: () => ipcRenderer.invoke('applink:state'),

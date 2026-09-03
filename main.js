@@ -703,6 +703,35 @@ ipcMain.on('window:drag-end', () => {
     store.setSettings({ windowX: x, windowY: y });
   }
 });
+
+// Grow the overlay while Settings is open so long tabs aren't clipped by the
+// default 600px window. Restore the previous bounds when Settings closes.
+let boundsBeforeSettings = null;
+ipcMain.handle('window:ensure-settings-space', () => {
+  if (!win || win.isDestroyed()) return { ok: false };
+  const bounds = win.getBounds();
+  const display = screen.getDisplayMatching(bounds);
+  const work = display.workArea;
+  const targetH = Math.min(780, Math.max(bounds.height, work.height - 24));
+  const targetW = Math.max(bounds.width, 720);
+  if (bounds.height >= targetH - 8 && bounds.width >= targetW - 8) {
+    return { ok: true, resized: false };
+  }
+  if (!boundsBeforeSettings) boundsBeforeSettings = { ...bounds };
+  const nextH = Math.max(bounds.height, targetH);
+  const nextW = Math.max(bounds.width, targetW);
+  const nextY = Math.max(work.y, Math.min(bounds.y, work.y + work.height - nextH));
+  const nextX = Math.max(work.x - 40, Math.min(bounds.x, work.x + work.width - Math.min(nextW, work.width)));
+  win.setBounds({ x: nextX, y: nextY, width: nextW, height: nextH });
+  return { ok: true, resized: true };
+});
+ipcMain.handle('window:restore-after-settings', () => {
+  if (!win || win.isDestroyed() || !boundsBeforeSettings) return { ok: false };
+  const restore = boundsBeforeSettings;
+  boundsBeforeSettings = null;
+  win.setBounds(restore);
+  return { ok: true };
+});
 ipcMain.on('open-pane', (_e, url) => { shell.openExternal(url).catch(() => {}); });
 ipcMain.on('log', (_e, msg) => console.log('[renderer]', msg));
 // -------- resume / job-description file import --------

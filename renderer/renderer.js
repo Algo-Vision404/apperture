@@ -771,7 +771,7 @@
     if (!settings) return;
     if (next && !hasResumeText()) {
       setSwitchOn(document.getElementById('use-resume-settings'), false, true);
-      openSettingsTab('profile');
+      void openSettingsTab('profile');
       showStatus('Import or paste your résumé first, then turn Resume on.');
       return;
     }
@@ -1696,9 +1696,9 @@
     updateResumeToggleUi();
   }
 
-  function openSettingsTab(tabName) {
+  async function openSettingsTab(tabName) {
     const wasHidden = scrim.classList.contains('hidden');
-    if (wasHidden) openSettings();
+    if (wasHidden) await openSettings();
     activateSettingsTab(tabName);
   }
 
@@ -1707,14 +1707,14 @@
       const field = el.dataset.field;
       if (field === 'resume') {
         if (!hasResumeText()) {
-          openSettingsTab('profile');
+          void openSettingsTab('profile');
           return;
         }
         void setUseResume(!(settings.useResume !== false));
         return;
       }
       const tab = field === 'jd' ? 'profile' : (field === 'stories' ? 'prep' : 'qa');
-      openSettingsTab(tab);
+      void openSettingsTab(tab);
     });
   });
 
@@ -1760,7 +1760,7 @@
     if (web && denied) {
       const audioBtn = document.createElement('button');
       audioBtn.textContent = 'Open Audio settings';
-      audioBtn.addEventListener('click', () => openSettingsTab('transcription'));
+      audioBtn.addEventListener('click', () => void openSettingsTab('transcription'));
       actions.appendChild(audioBtn);
     }
     const dismissBtn = document.createElement('button');
@@ -1950,6 +1950,11 @@
     });
   }
 
+  function restoreWindowAfterSettings() {
+    if (!apperture.restoreAfterSettings) return;
+    try { void apperture.restoreAfterSettings(); } catch (_) {}
+  }
+
   function activateSettingsTab(tabName) {
     const tab = document.querySelector(`.s-tab[data-tab="${tabName}"]`);
     const pane = document.querySelector(`.s-tab-pane[data-pane="${tabName}"]`);
@@ -1962,16 +1967,23 @@
     if (tabName === 'about') void refreshUpdateInfo();
   }
 
-  function openSettings() {
+  async function openSettings() {
     if (!scrim.classList.contains('hidden')) return;
     fillSettings();
     initKeysAdvancedToggle();
+    if (apperture.ensureSettingsSpace) {
+      try { await apperture.ensureSettingsSpace(); } catch (_) {}
+    }
     scrim.classList.remove('hidden');
     resetSettingsScroll();
+    requestAnimationFrame(() => resetSettingsScroll());
     refreshWhisperModels();
   }
   async function commitSettings() {
-    if (await saveSettings()) scrim.classList.add('hidden');
+    if (await saveSettings()) {
+      scrim.classList.add('hidden');
+      restoreWindowAfterSettings();
+    }
   }
   async function dismissSettings() {
     try {
@@ -1983,8 +1995,9 @@
     syncStealthUi();
     updateResumeToggleUi();
     scrim.classList.add('hidden');
+    restoreWindowAfterSettings();
   }
-  $('#more-btn').addEventListener('click', openSettings);
+  $('#more-btn').addEventListener('click', () => { void openSettings(); });
   $('#s-close').addEventListener('click', () => { void commitSettings(); });
   const sCancel = document.getElementById('s-cancel');
   if (sCancel) sCancel.addEventListener('click', () => { void dismissSettings(); });
@@ -2686,8 +2699,8 @@
       title: 'Connect a provider',
       body: 'apperture uses <strong>your own</strong> API key — pick <span class="hl">OpenAI</span>, <span class="hl">Anthropic</span>, <span class="hl">Gemini</span>, <span class="hl">OpenRouter</span>, <span class="hl">Groq</span>, or <span class="hl">Azure</span>. Paste keys in Settings → <span class="hl">AI</span>.<br><br><strong>Tip:</strong> For free live mic captions, add a <span class="hl">Groq</span> key under Settings → <span class="hl">Audio</span>.',
       buttons: [
-        { label: 'Open Settings → AI', action: () => { closeGuide(); openSettingsTab('keys'); } },
-        { label: 'Open Settings → Audio', action: () => { closeGuide(); openSettingsTab('transcription'); } }
+        { label: 'Open Settings → AI', action: () => { closeGuide(); void openSettingsTab('keys'); } },
+        { label: 'Open Settings → Audio', action: () => { closeGuide(); void openSettingsTab('transcription'); } }
       ]
     },
     {
@@ -2697,7 +2710,7 @@
       blurb: 'Zoom + screen share',
       title: 'Stay hidden in Zoom',
       body: 'apperture is hidden from most screen shares automatically (Google Meet, Teams, QuickTime). <strong>Zoom needs one setting:</strong><br><br>Zoom → <span class="hl">Settings</span> → <span class="hl">Share Screen</span> → <span class="hl">Advanced</span> → <strong>Screen capture mode</strong> → <strong>“Advanced capture with window filtering.”</strong><br><br>Also check Settings → <span class="hl">Stealth</span> for branding and auto-collapse.',
-      buttons: [{ label: 'Open Stealth settings', action: () => { closeGuide(); openSettingsTab('style'); } }]
+      buttons: [{ label: 'Open Stealth settings', action: () => { closeGuide(); void openSettingsTab('style'); } }]
     },
     {
       id: 'shortcuts',

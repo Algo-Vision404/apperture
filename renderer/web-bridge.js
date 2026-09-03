@@ -624,6 +624,8 @@
     dragStart: function () {},
     dragMove: function () {},
     dragEnd: function () {},
+    ensureSettingsSpace: async function () { return { ok: true, resized: false }; },
+    restoreAfterSettings: async function () { return { ok: true }; },
     clearTranscript: async function () {
       transcriptTurns = [];
       await api('/api/transcript', { method: 'DELETE' }).catch(function () {});

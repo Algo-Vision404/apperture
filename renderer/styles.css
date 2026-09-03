@@ -1292,19 +1292,30 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 /* ============================ Settings ============================ */
 #settings-scrim {
   position: fixed; inset: 0; z-index: 20;
-  display: grid; place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  overflow: hidden;
   background: rgba(0,0,0,0.35); backdrop-filter: blur(4px);
 }
 #settings-scrim.hidden { display: none; }
 #settings {
-  width: min(520px, 94vw);
-  padding: 18px 20px 20px;
+  width: min(520px, 100%);
+  max-width: 100%;
+  padding: 16px 18px 12px;
   -webkit-app-region: no-drag;
-  max-height: 88vh;
+  /* Stay inside the Electron window (vh = window, not monitor). */
+  max-height: 100%;
+  min-height: 0;
+  height: auto;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   animation: overlayIn 280ms var(--ease-out) both;
 }
+#settings > * { position: relative; z-index: 1; }
 .s-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0; gap: 12px; }
 .s-title { font-size: 17px; font-weight: 600; color: var(--tx-1); }
 .s-head-actions { display: flex; align-items: center; gap: 8px; }
@@ -1376,14 +1387,18 @@ button:focus-visible { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
 
 /* Tab panes — one shared scroll container so switching tabs always starts at the top */
 .s-pane-scroll {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 2px;
+  padding: 0 4px 28px 0;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
-.s-tab-pane { display: flex; flex-direction: column; gap: 8px; }
+.s-tab-pane { display: flex; flex-direction: column; gap: 8px; padding-bottom: 4px; }
 .s-tab-pane.hidden { display: none; }
+.s-tab-pane > :last-child { margin-bottom: 8px; }
 
 .s-body { display: flex; flex-direction: column; gap: 8px; }
 .s-label { color: var(--tx-2); font-size: 13px; font-weight: 600; margin-top: 6px; flex-shrink: 0; }

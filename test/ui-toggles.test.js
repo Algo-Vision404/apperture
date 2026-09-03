@@ -67,3 +67,17 @@ test('settings uses one shared scroll container and resets on tab change', () =>
   assert.match(js, /dragDidMove/);
   assert.match(js, /suppressClickUntil/);
 });
+
+test('settings panel stays inside the window and can scroll to the bottom', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../renderer/styles.css'), 'utf8');
+  assert.match(css, /#settings-scrim[\s\S]{0,220}padding:\s*10px/);
+  assert.match(css, /#settings\s*\{[\s\S]{0,280}max-height:\s*100%/);
+  assert.match(css, /#settings\s*\{[\s\S]{0,320}overflow:\s*hidden/);
+  assert.match(css, /\.s-pane-scroll\s*\{[\s\S]{0,220}padding:\s*0 4px 28px 0/);
+  assert.match(js, /ensureSettingsSpace/);
+  assert.match(js, /restoreAfterSettings/);
+  assert.match(js, /restoreWindowAfterSettings/);
+  const main = fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8');
+  assert.match(main, /window:ensure-settings-space/);
+  assert.match(main, /window:restore-after-settings/);
+});
