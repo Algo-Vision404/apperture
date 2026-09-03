@@ -26,10 +26,21 @@ function createAutoUpdate(send) {
   }
 
   if (!app.isPackaged) {
+    const devMessage = 'Auto-update only works in the installed desktop app. Download apperture-win-x64.exe from GitHub Releases.';
+    function devState() {
+      return {
+        ...state,
+        packaged: false,
+        message: state.message || devMessage
+      };
+    }
     return {
-      getState: () => ({ ...state, packaged: false }),
-      check: async () => ({ ok: false, reason: 'dev' }),
-      install: () => ({ ok: false, reason: 'dev' }),
+      getState: devState,
+      check: async () => {
+        emit({ phase: 'none', message: devMessage, lastCheckedAt: Date.now() });
+        return { ok: false, reason: 'dev', state: devState() };
+      },
+      install: () => ({ ok: false, reason: 'dev', state: devState() }),
       start: () => {}
     };
   }
@@ -81,22 +92,47 @@ function createAutoUpdate(send) {
 
   let timer = null;
 
+  function snapshot() {
+    const out = { ...state, packaged: true };
+    if (!out.message) out.message = formatUpdateUserMessage(out.phase, '');
+    return out;
+  }
+
   return {
-    getState: () => ({ ...state, packaged: true }),
+    getState: snapshot,
     async check() {
       try {
-        await autoUpdater.checkForUpdates();
-        return { ok: true };
+        emit({ phase: 'checking', message: 'Checking for updates…', lastCheckedAt: Date.now() });
+        const result = await autoUpdater.checkForUpdates();
+        if (state.phase === 'checking') {
+          const nextVersion = result && result.updateInfo && result.updateInfo.version;
+          if (nextVersion) {
+            emit({
+              phase: 'available',
+              availableVersion: nextVersion,
+              message: `Update ${nextVersion} is downloading…`,
+              lastCheckedAt: Date.now()
+            });
+          } else {
+            emit({
+              phase: 'none',
+              availableVersion: null,
+              message: 'You’re on the latest version.',
+              lastCheckedAt: Date.now()
+            });
+          }
+        }
+        return { ok: true, state: snapshot() };
       } catch (err) {
         const raw = err.message || String(err);
         emit({ phase: 'error', message: raw, lastCheckedAt: Date.now() });
-        return { ok: false, error: raw };
+        return { ok: false, error: raw, state: snapshot() };
       }
     },
     install() {
-      if (state.phase !== 'ready') return { ok: false, reason: 'not-ready' };
+      if (state.phase !== 'ready') return { ok: false, reason: 'not-ready', state: snapshot() };
       autoUpdater.quitAndInstall(false, true);
-      return { ok: true };
+      return { ok: true, state: snapshot() };
     },
     start() {
       setTimeout(() => { void this.check(); }, STARTUP_DELAY_MS);

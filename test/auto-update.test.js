@@ -59,11 +59,21 @@ test('main, preload, and renderer expose update IPC', () => {
   const main = fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8');
   const preload = fs.readFileSync(path.join(__dirname, '../preload.js'), 'utf8');
   const renderer = fs.readFileSync(path.join(__dirname, '../renderer/renderer.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../renderer/index.html'), 'utf8');
   assert.match(main, /createAutoUpdate/);
   assert.match(main, /update:check/);
   assert.match(preload, /updateCheck/);
   assert.match(preload, /update:status/);
   assert.match(renderer, /initAutoUpdateUi/);
+  assert.match(renderer, /applyUpdateState/);
+  assert.match(renderer, /result\.state/);
+  assert.match(html, /id="update-last-checked"/);
+});
+
+test('auto-update check returns state for the Updates UI', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../src/auto-update.js'), 'utf8');
+  assert.match(src, /return \{ ok: true, state: snapshot\(\) \}/);
+  assert.match(src, /function snapshot\(\)/);
 });
 
 test('release script uploads latest.yml with the installer', () => {

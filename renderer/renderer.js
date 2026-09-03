@@ -1793,6 +1793,7 @@
 
   function renderUpdateUi() {
     const statusText = document.getElementById('update-status-text');
+    const lastCheckedEl = document.getElementById('update-last-checked');
     const currentVersion = document.getElementById('update-current-version');
     const progressWrap = document.getElementById('update-progress-wrap');
     const progress = document.getElementById('update-progress');
@@ -1808,6 +1809,16 @@
     if (statusText) {
       statusText.textContent = statusMessage;
       statusText.classList.toggle('update-status-error', updateUiState.phase === 'error');
+    }
+    if (lastCheckedEl) {
+      if (updateUiState.lastCheckedAt) {
+        const when = new Date(updateUiState.lastCheckedAt);
+        lastCheckedEl.textContent = 'Last checked: ' + when.toLocaleString();
+        lastCheckedEl.classList.remove('hidden');
+      } else {
+        lastCheckedEl.textContent = '';
+        lastCheckedEl.classList.add('hidden');
+      }
     }
     if (progressWrap) progressWrap.classList.toggle('hidden', updateUiState.phase !== 'downloading');
     if (progress) progress.value = updateUiState.percent || 0;
@@ -1840,9 +1851,16 @@
   async function refreshUpdateInfo() {
     if (!apperture.updateInfo) return;
     try {
-      updateUiState = await apperture.updateInfo();
+      const info = await apperture.updateInfo();
+      updateUiState = { ...updateUiState, ...(info || {}) };
       renderUpdateUi();
     } catch (_) {}
+  }
+
+  function applyUpdateState(patch) {
+    if (!patch) return;
+    updateUiState = { ...updateUiState, ...patch };
+    renderUpdateUi();
   }
 
   function initAutoUpdateUi() {
@@ -1856,10 +1874,17 @@
     if (checkBtn && !checkBtn.dataset.wired) {
       checkBtn.dataset.wired = '1';
       checkBtn.addEventListener('click', async () => {
-        updateUiState.message = 'Checking for updates…';
-        renderUpdateUi();
-        await apperture.updateCheck();
-        await refreshUpdateInfo();
+        applyUpdateState({ phase: 'checking', message: 'Checking for updates…' });
+        try {
+          const result = await apperture.updateCheck();
+          if (result && result.state) applyUpdateState(result.state);
+          else await refreshUpdateInfo();
+        } catch (_) {
+          applyUpdateState({
+            phase: 'error',
+            message: 'Couldn’t check for updates. Try again in a few seconds.'
+          });
+        }
       });
     }
     if (installBtn && !installBtn.dataset.wired) {
@@ -1879,8 +1904,7 @@
     }
 
     apperture.on('update:status', (payload) => {
-      updateUiState = { ...updateUiState, ...(payload || {}) };
-      renderUpdateUi();
+      applyUpdateState(payload);
       if (payload && payload.phase === 'ready') {
         showToast(`Update ${payload.availableVersion || ''} ready — restart to install`, 5000);
       }
@@ -1955,6 +1979,7 @@
       tab.classList.add('on');
       const pane = document.querySelector(`.s-tab-pane[data-pane="${tab.dataset.tab}"]`);
       if (pane) pane.classList.remove('hidden');
+      if (tab.dataset.tab === 'about') void refreshUpdateInfo();
     });
   });
 

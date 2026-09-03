@@ -629,8 +629,30 @@ ipcMain.handle('platform:info', () => {
     version: app.getVersion()
   };
 });
-ipcMain.handle('update:info', () => (autoUpdate ? autoUpdate.getState() : { phase: 'idle', version: app.getVersion(), packaged: app.isPackaged }));
-ipcMain.handle('update:check', () => (autoUpdate ? autoUpdate.check() : { ok: false, reason: 'unavailable' }));
+ipcMain.handle('update:info', () => {
+  if (autoUpdate) return autoUpdate.getState();
+  return {
+    phase: 'idle',
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    message: 'Update service is starting…'
+  };
+});
+ipcMain.handle('update:check', async () => {
+  if (!autoUpdate) {
+    return {
+      ok: false,
+      reason: 'unavailable',
+      state: {
+        phase: 'error',
+        version: app.getVersion(),
+        packaged: app.isPackaged,
+        message: 'Update service is not ready yet. Try again in a few seconds.'
+      }
+    };
+  }
+  return autoUpdate.check();
+});
 ipcMain.handle('update:install', () => (autoUpdate ? autoUpdate.install() : { ok: false, reason: 'unavailable' }));
 ipcMain.handle('transcript:clear', () => {
   transcript.splice(0, transcript.length);
